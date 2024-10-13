@@ -1,0 +1,35 @@
+name: NixOS Package Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build package
+        run: |
+          nix-build default.nix
+
+      - name: Deploy to NixOS
+        env:
+          NIXOS_HOST: ${{ secrets.NIXOS_HOST }}
+          NIXOS_USER: ${{ secrets.NIXOS_USER }}
+          NIXOS_PASSWORD: ${{ secrets.NIXOS_PASSWORD }}
+        run: |
+          # Connect to the NixOS host
+          sshpass -p "$NIXOS_PASSWORD" ssh "$NIXOS_USER@$NIXOS_HOST" << EOF
+          
+          # Copy the built package
+          mkdir -p /tmp/codemerge
+          scp result /tmp/codemerge/
+          
+          # Install the package
+          sudo nix-env -i /tmp/codemerge/result
+          
+          EOF
