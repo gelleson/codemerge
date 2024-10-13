@@ -5,7 +5,7 @@ use structopt::StructOpt;
 use ignore::{WalkBuilder};
 use regex::Regex;
 use glob::Pattern;
-
+use tiktoken_rs::{o200k_base, CoreBPE};
 // Import vfs crate traits
 use vfs::{VfsPath, FileSystem, PhysicalFS};
 
@@ -32,8 +32,10 @@ enum CodeMerge {
     },
 }
 
+
 fn main() -> io::Result<()> {
     let opt = CodeMerge::from_args();
+    let bpe = o200k_base().expect("Failed to load BPE model");
 
     match opt {
         CodeMerge::Merge { output, ignores, verbose } => {
@@ -41,7 +43,7 @@ fn main() -> io::Result<()> {
             merge_files(fs, output.as_deref(), &ignores, verbose)?;
         }
         CodeMerge::Tokens { count, ignores, verbose } => {
-            calculate_tokens(count, &ignores, verbose)?;
+            calculate_tokens(count, &ignores, verbose, &bpe)?;
         }
     }
 
@@ -56,6 +58,7 @@ fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], verbose:
 
     let mut total_tokens = 0;
     let walker = create_walk_builder(ignores);
+    let bpe = o200k_base().expect("Failed to load BPE model");
 
     for entry in walker {
         match entry {
@@ -75,7 +78,7 @@ fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], verbose:
                     for line in reader.lines() {
                         let line = line?;
                         writeln!(writer, "{}", line)?;
-                        file_tokens += count_tokens(&line);
+                        file_tokens += count_tokens(&line, &bpe);
                     }
 
                     total_tokens += file_tokens;
@@ -83,7 +86,7 @@ fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], verbose:
                         eprintln!("Tokens in {}: {}", path.display(), file_tokens);
                     }
                 }
-            },
+            }
             Err(e) => eprintln!("Error processing entry: {}", e),
         }
     }
@@ -96,7 +99,7 @@ fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], verbose:
     Ok(())
 }
 
-fn calculate_tokens(count: usize, ignores: &[PathBuf], verbose: bool) -> io::Result<()> {
+fn calculate_tokens(count: usize, ignores: &[PathBuf], verbose: bool, bpe: &CoreBPE) -> io::Result<()> {
     let mut file_tokens = Vec::new();
     let mut total_tokens = 0;
 
@@ -108,7 +111,7 @@ fn calculate_tokens(count: usize, ignores: &[PathBuf], verbose: bool) -> io::Res
                 let path = entry.path();
 
                 if path.is_file() {
-                    let tokens = count_file_tokens(path)?;
+                    let tokens = count_file_tokens(path, &bpe)?;
                     total_tokens += tokens;
                     file_tokens.push((path.to_path_buf(), tokens));
 
@@ -116,7 +119,7 @@ fn calculate_tokens(count: usize, ignores: &[PathBuf], verbose: bool) -> io::Res
                         println!("Tokens in {}: {}", path.display(), tokens);
                     }
                 }
-            },
+            }
             Err(e) => {
                 eprintln!("Error processing entry: {}", e);
             }
@@ -133,21 +136,20 @@ fn calculate_tokens(count: usize, ignores: &[PathBuf], verbose: bool) -> io::Res
     Ok(())
 }
 
-fn count_file_tokens(path: &Path) -> io::Result<usize> {
+fn count_file_tokens(path: &Path, bpe: &CoreBPE) -> io::Result<usize> {
     let file = File::open(path)?;
     let reader = io::BufReader::new(file);
     let mut tokens = 0;
 
     for line in reader.lines() {
-        tokens += count_tokens(&line?);
+        tokens += count_tokens(&line?, &bpe);
     }
 
     Ok(tokens)
 }
 
-fn count_tokens(text: &str) -> usize {
-    let re = Regex::new(r"\S+").unwrap();
-    re.find_iter(text).count()
+fn count_tokens(text: &str, bpe: &CoreBPE) -> usize {
+    bpe.encode(text, Default::default()).len()
 }
 
 fn create_walk_builder(ignores: &[PathBuf]) -> ignore::Walk {
