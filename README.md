@@ -8,19 +8,16 @@ CodeMerge is a command-line tool for merging multiple code files into a single o
 - Specify files/directories to ignore during merging
 - Calculate token counts for each file and total tokens
 - Verbose output mode for detailed information
-- Written in Go for fast performance
+- Written in Rust for fast performance
 - Can be used with AI large language models (LLMs) for context-aware code generation
-
 
 ## Installation
 
-To install CodeMerge, you need to have Go installed on your system. Then you can use `go get` to download and install the tool:
+To install CodeMerge, you can download the pre-built binary from the [releases page](https://github.com/gelleson/codemerge/releases) or build it from source using Cargo:
 
 ```bash
-go install github.com/gelleson/codemerge
+cargo install codemerge
 ```
-
-This will download the source code, compile it, and install the `codemerge` binary in your `$GOPATH/bin` directory.
 
 ## Usage
 
@@ -31,7 +28,6 @@ To merge code files, use the `merge` command:
 ```bash
 codemerge merge -o merged.txt
 ```
-
 
 This will merge files into the output file `merged.txt`.
 
@@ -48,7 +44,6 @@ To calculate token counts without merging, use the `tokens` command:
 codemerge tokens -c 5
 ```
 
-
 This will calculate the token counts for each file and display the top 5 files with the most tokens.
 
 Additional options:
@@ -59,6 +54,10 @@ Additional options:
 ## Configuration
 
 CodeMerge respects `.gitignore` files for specifying files/directories to ignore during merging and token calculation. You can also use the `-i` flag to specify additional ignore patterns.
+
+## Previous Go Version
+
+The original version of CodeMerge was written in Go and is available in the `/go` branch of this repository. However, this version will not be actively maintained going forward. The Rust version was rewritten to take advantage of Rust's improved performance, safety, and ecosystem, particularly the `tiktoken-rs` library for efficient token counting.
 
 ## Contributing
 
