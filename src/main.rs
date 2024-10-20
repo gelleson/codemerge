@@ -26,7 +26,7 @@ enum CodeMerge {
         filters: Vec<String>,
         #[structopt(short, long)]
         verbose: bool,
-        #[structopt(long = "file-names-only", help = "Print only file names")]
+        #[structopt(short = "n", long = "file-names-only", help = "Print only file names")]
         file_name: bool,
     },
     #[structopt(
