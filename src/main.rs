@@ -23,6 +23,8 @@ enum CodeMerge {
         filters: Vec<String>,
         #[structopt(short, long)]
         verbose: bool,
+        #[structopt(long = "file-names-only", help = "Print only file names")]
+        file_name: bool,
     },
     #[structopt(name = "tokens", about = "Calculate token counts for multiple code files")]
     Tokens {
@@ -42,10 +44,10 @@ fn main() -> io::Result<()> {
     let bpe = o200k_base().expect("Failed to load BPE model");
 
     match opt {
-        CodeMerge::Merge { output, ignores, filters, verbose } => {
+        CodeMerge::Merge { output, ignores, filters, verbose, file_name } => {
             let fs = PhysicalFS::new(PathBuf::from(".")).into();
-            merge_files(fs, output.as_deref(), &ignores, &filters, verbose)?;
-        }
+            merge_files(fs, output.as_deref(), &ignores, &filters, verbose, file_name)?;
+        },
         CodeMerge::Tokens { count, ignores, filters, verbose } => {
             calculate_tokens(count, &ignores, &filters, verbose, &bpe)?;
         }
@@ -54,7 +56,7 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], filters: &[String], verbose: bool) -> io::Result<()> {
+fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], filters: &[String], verbose: bool, file_name: bool) -> io::Result<()> {
     let writer: Arc<Mutex<Box<dyn Write + Send + Sync>>> = Arc::new(Mutex::new(match output {
         Some(path) => Box::new(BufWriter::new(File::create(path)?)),
         None => Box::new(stdout()),
@@ -74,23 +76,28 @@ fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], filters:
                     if verbose {
                         eprintln!("Processing: {}", path.display());
                     }
-                    writeln!(writer.lock().unwrap(), "// File: {}", path.display()).unwrap();
 
-                    let vfs_path = fs.join(entry.path().to_str().unwrap()).expect("failed to read");
-                    let file = vfs_path.open_file().expect("failed to open file");
-                    let reader = io::BufReader::new(file);
-                    let mut file_tokens = 0;
+                    if file_name {
+                        writeln!(writer.lock().unwrap(), "{}", path.display()).unwrap();
+                    } else {
+                        writeln!(writer.lock().unwrap(), "// File: {}", path.display()).unwrap();
 
-                    for line in reader.lines() {
-                        let line = line.unwrap();
-                        writeln!(writer.lock().unwrap(), "{}", line).unwrap();
-                        file_tokens += count_tokens(&line, &bpe);
-                    }
+                        let vfs_path = fs.join(entry.path().to_str().unwrap()).expect("failed to read");
+                        let file = vfs_path.open_file().expect("failed to open file");
+                        let reader = io::BufReader::new(file);
+                        let mut file_tokens = 0;
 
-                    let mut total = total_tokens.lock().unwrap();
-                    *total += file_tokens;
-                    if verbose {
-                        eprintln!("Tokens in {}: {}", path.display(), file_tokens);
+                        for line in reader.lines() {
+                            let line = line.unwrap();
+                            writeln!(writer.lock().unwrap(), "{}", line).unwrap();
+                            file_tokens += count_tokens(&line, &bpe);
+                        }
+
+                        let mut total = total_tokens.lock().unwrap();
+                        *total += file_tokens;
+                        if verbose {
+                            eprintln!("Tokens in {}: {}", path.display(), file_tokens);
+                        }
                     }
                 }
             }
@@ -100,7 +107,7 @@ fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], filters:
 
     writer.lock().unwrap().flush()?;
     let total = total_tokens.lock().unwrap();
-    if verbose {
+    if verbose && !file_name {
         eprintln!("Total tokens: {}", *total);
     }
     if let Some(path) = output {
