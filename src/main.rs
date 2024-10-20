@@ -7,7 +7,7 @@ use structopt::StructOpt;
 use ignore::{WalkBuilder};
 use glob::Pattern;
 use tiktoken_rs::{o200k_base, CoreBPE};
-use vfs::{VfsPath, FileSystem, PhysicalFS};
+use vfs::{VfsPath, PhysicalFS};
 use rayon::prelude::*;
 
 #[derive(StructOpt, Debug)]
