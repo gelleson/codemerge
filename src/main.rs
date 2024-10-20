@@ -100,7 +100,9 @@ fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], filters:
 
     writer.lock().unwrap().flush()?;
     let total = total_tokens.lock().unwrap();
-    eprintln!("Total tokens: {}", *total);
+    if verbose {
+        eprintln!("Total tokens: {}", *total);
+    }
     if let Some(path) = output {
         eprintln!("Merged files into: {}", path.display());
     }
