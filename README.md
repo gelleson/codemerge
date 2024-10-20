@@ -26,15 +26,16 @@ cargo install codemerge
 To merge code files, use the `merge` command:
 
 ```bash
-codemerge merge -o merged.txt
+codemerge merge -o merged.txt -f "**/*.rs"
 ```
 
-This will merge files into the output file `merged.txt`.
+This will merge all `.rs` files into the output file `merged.txt`.
 
 Additional options:
-- `-o, --output`: Specify the output file name (required)
+- `-o, --output`: Specify the output file name (required for `merge` command)
 - `-i, --ignores`: Specify files/directories to ignore (can be used multiple times)
 - `-v, --verbose`: Enable verbose output mode
+- `-f, --filter`: Specify a filter pattern (can be used multiple times)
 
 ### Calculating Tokens
 
@@ -50,6 +51,7 @@ Additional options:
 - `-c, --count`: Specify the number of top files to display
 - `-i, --ignores`: Specify files/directories to ignore (can be used multiple times)
 - `-v, --verbose`: Enable verbose output mode
+- `-f, --filter`: Specify a filter pattern (can be used multiple times)
 
 ## Configuration
 
