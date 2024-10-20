@@ -2,7 +2,7 @@
 name = "codemerge"
 description = "A command-line tool for merging multiple code files into a single output file"
 license = "MIT"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2021"
 
 [dependencies]
