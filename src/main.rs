@@ -1,19 +1,22 @@
+use glob::Pattern;
+use ignore::WalkBuilder;
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{self, BufRead, BufWriter, Write, stdout};
+use std::io::{self, stdout, BufRead, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
-use ignore::{WalkBuilder};
-use glob::Pattern;
 use tiktoken_rs::{o200k_base, CoreBPE};
-use vfs::{VfsPath, PhysicalFS};
-use rayon::prelude::*;
+use vfs::{PhysicalFS, VfsPath};
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "codemerge")]
 enum CodeMerge {
-    #[structopt(name = "merge", about = "Merge multiple code files into a single output file")]
+    #[structopt(
+        name = "merge",
+        about = "Merge multiple code files into a single output file"
+    )]
     Merge {
         #[structopt(short, long, parse(from_os_str))]
         output: Option<PathBuf>,
@@ -26,7 +29,10 @@ enum CodeMerge {
         #[structopt(long = "file-names-only", help = "Print only file names")]
         file_name: bool,
     },
-    #[structopt(name = "tokens", about = "Calculate token counts for multiple code files")]
+    #[structopt(
+        name = "tokens",
+        about = "Calculate token counts for multiple code files"
+    )]
     Tokens {
         #[structopt(short, long, default_value = "10")]
         count: usize,
@@ -44,11 +50,29 @@ fn main() -> io::Result<()> {
     let bpe = o200k_base().expect("Failed to load BPE model");
 
     match opt {
-        CodeMerge::Merge { output, ignores, filters, verbose, file_name } => {
+        CodeMerge::Merge {
+            output,
+            ignores,
+            filters,
+            verbose,
+            file_name,
+        } => {
             let fs = PhysicalFS::new(PathBuf::from(".")).into();
-            merge_files(fs, output.as_deref(), &ignores, &filters, verbose, file_name)?;
-        },
-        CodeMerge::Tokens { count, ignores, filters, verbose } => {
+            merge_files(
+                fs,
+                output.as_deref(),
+                &ignores,
+                &filters,
+                verbose,
+                file_name,
+            )?;
+        }
+        CodeMerge::Tokens {
+            count,
+            ignores,
+            filters,
+            verbose,
+        } => {
             calculate_tokens(count, &ignores, &filters, verbose, &bpe)?;
         }
     }
@@ -56,7 +80,14 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], filters: &[String], verbose: bool, file_name: bool) -> io::Result<()> {
+fn merge_files(
+    fs: VfsPath,
+    output: Option<&Path>,
+    ignores: &[PathBuf],
+    filters: &[String],
+    verbose: bool,
+    file_name: bool,
+) -> io::Result<()> {
     let writer: Arc<Mutex<Box<dyn Write + Send + Sync>>> = Arc::new(Mutex::new(match output {
         Some(path) => Box::new(BufWriter::new(File::create(path)?)),
         None => Box::new(stdout()),
@@ -82,7 +113,9 @@ fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], filters:
                     } else {
                         writeln!(writer.lock().unwrap(), "// File: {}", path.display()).unwrap();
 
-                        let vfs_path = fs.join(entry.path().to_str().unwrap()).expect("failed to read");
+                        let vfs_path = fs
+                            .join(entry.path().to_str().unwrap())
+                            .expect("failed to read");
                         let file = vfs_path.open_file().expect("failed to open file");
                         let reader = io::BufReader::new(file);
                         let mut file_tokens = 0;
@@ -116,14 +149,22 @@ fn merge_files(fs: VfsPath, output: Option<&Path>, ignores: &[PathBuf], filters:
     Ok(())
 }
 
-fn calculate_tokens(count: usize, ignores: &[PathBuf], filters: &[String], verbose: bool, bpe: &CoreBPE) -> io::Result<()> {
+fn calculate_tokens(
+    count: usize,
+    ignores: &[PathBuf],
+    filters: &[String],
+    verbose: bool,
+    bpe: &CoreBPE,
+) -> io::Result<()> {
     let file_tokens: Arc<Mutex<HashMap<PathBuf, usize>>> = Arc::new(Mutex::new(HashMap::new()));
     let total_tokens = Arc::new(Mutex::new(0));
 
     let walker = create_walk_builder(ignores, filters);
 
-    walker.into_iter().par_bridge().for_each(|entry| {
-        match entry {
+    walker
+        .into_iter()
+        .par_bridge()
+        .for_each(|entry| match entry {
             Ok(entry) => {
                 let path = entry.path();
                 if path.is_file() {
@@ -142,10 +183,14 @@ fn calculate_tokens(count: usize, ignores: &[PathBuf], filters: &[String], verbo
             Err(e) => {
                 eprintln!("Error processing entry: {}", e);
             }
-        }
-    });
+        });
 
-    let mut file_tokens = file_tokens.lock().unwrap().clone().into_iter().collect::<Vec<_>>();
+    let mut file_tokens = file_tokens
+        .lock()
+        .unwrap()
+        .clone()
+        .into_iter()
+        .collect::<Vec<_>>();
     file_tokens.sort_by(|a, b| b.1.cmp(&a.1));
     println!("Top {} files by token count:", count);
     for (path, tokens) in file_tokens.iter().take(count) {
@@ -195,8 +240,13 @@ fn create_walk_builder(ignores: &[PathBuf], filters: &[String]) -> ignore::Walk 
         }
 
         // For files, apply ignore and filter patterns
-        let not_ignored = !ignore_patterns.iter().any(|pattern| pattern.matches_path(path));
-        let passes_filter = filter_patterns.is_empty() || filter_patterns.iter().any(|pattern| pattern.matches_path(path));
+        let not_ignored = !ignore_patterns
+            .iter()
+            .any(|pattern| pattern.matches_path(path));
+        let passes_filter = filter_patterns.is_empty()
+            || filter_patterns
+                .iter()
+                .any(|pattern| pattern.matches_path(path));
 
         not_ignored && passes_filter
     });
@@ -207,10 +257,10 @@ fn create_walk_builder(ignores: &[PathBuf], filters: &[String]) -> ignore::Walk 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
     use std::fs::{self, File};
     use std::io::Write;
     use std::path::PathBuf;
+    use tempfile::tempdir;
 
     #[test]
     fn test_count_tokens() {
@@ -286,7 +336,9 @@ mod tests {
                     .filter_map(|f| glob::Pattern::new(f).ok())
                     .collect();
                 let passes_filter = filter_patterns.is_empty()
-                    || filter_patterns.iter().any(|pattern| pattern.matches_path(path));
+                    || filter_patterns
+                        .iter()
+                        .any(|pattern| pattern.matches_path(path));
 
                 not_ignored && passes_filter
             })
@@ -300,10 +352,7 @@ mod tests {
             .map(|e| e.path().strip_prefix(dir_path).unwrap().to_path_buf())
             .collect();
 
-        let expected_files = vec![
-            PathBuf::from("file.rs"),
-            PathBuf::from("subdir/subfile.rs"),
-        ];
+        let expected_files = vec![PathBuf::from("file.rs"), PathBuf::from("subdir/subfile.rs")];
 
         // Assert the expected files are found
         assert_eq!(files_found.len(), expected_files.len());
@@ -313,7 +362,6 @@ mod tests {
 
         Ok(())
     }
-
 
     #[test]
     fn test_calculate_tokens() -> io::Result<()> {
@@ -332,13 +380,13 @@ mod tests {
 
         // Set up filters
         let filters = vec!["**/*.rs".to_string()];
-        let ignores: Vec<PathBuf> = vec![];        let verbose = false;
+        let ignores: Vec<PathBuf> = vec![];
+        let verbose = false;
         let count = 2;
         let bpe = o200k_base().expect("Failed to load BPE model");
 
         // Prepare the data structures
-        let file_tokens: Arc<Mutex<HashMap<PathBuf, usize>>> =
-            Arc::new(Mutex::new(HashMap::new()));
+        let file_tokens: Arc<Mutex<HashMap<PathBuf, usize>>> = Arc::new(Mutex::new(HashMap::new()));
         let total_tokens = Arc::new(Mutex::new(0));
 
         // Create the walker
@@ -357,28 +405,28 @@ mod tests {
                     .filter_map(|f| glob::Pattern::new(f).ok())
                     .collect();
                 let passes_filter = filter_patterns.is_empty()
-                    || filter_patterns.iter().any(|pattern| pattern.matches_path(path));
+                    || filter_patterns
+                        .iter()
+                        .any(|pattern| pattern.matches_path(path));
 
                 not_ignored && passes_filter
             })
             .build();
 
         // Process the entries
-        walker.into_iter().for_each(|entry| {
-            match entry {
-                Ok(entry) => {
-                    let path = entry.path();
-                    if path.is_file() {
-                        let tokens = count_file_tokens(path, &bpe).unwrap();
-                        let mut file_tokens_map = file_tokens.lock().unwrap();
-                        file_tokens_map.insert(path.to_path_buf(), tokens);
+        walker.into_iter().for_each(|entry| match entry {
+            Ok(entry) => {
+                let path = entry.path();
+                if path.is_file() {
+                    let tokens = count_file_tokens(path, &bpe).unwrap();
+                    let mut file_tokens_map = file_tokens.lock().unwrap();
+                    file_tokens_map.insert(path.to_path_buf(), tokens);
 
-                        let mut total = total_tokens.lock().unwrap();
-                        *total += tokens;
-                    }
+                    let mut total = total_tokens.lock().unwrap();
+                    *total += tokens;
                 }
-                Err(e) => eprintln!("Error processing entry: {}", e),
             }
+            Err(e) => eprintln!("Error processing entry: {}", e),
         });
 
         // Assertions
