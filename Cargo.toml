@@ -1,5 +1,7 @@
 [package]
 name = "codemerge"
+description = "A command-line tool for merging multiple code files into a single output file"
+license = "MIT"
 version = "0.2.2"
 edition = "2021"
 
