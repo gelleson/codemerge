@@ -120,6 +120,7 @@ dependencies = [
  "tempfile",
  "tiktoken-rs",
  "vfs",
+ "walkdir",
 ]
 
 [[package]]
