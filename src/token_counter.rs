@@ -73,8 +73,6 @@ pub fn merge_files(
 }
 
 fn read_file_contents(path: &str) -> Result<(String, usize), io::Error> {
-    println!("Attempting to read file at path: {}", path);
-
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mut contents = String::new();
