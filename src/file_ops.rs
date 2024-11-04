@@ -2,22 +2,33 @@ use glob::Pattern;
 use ignore::{Walk, WalkBuilder};
 use std::path::PathBuf;
 
-pub fn create_walk_builder(ignores: &[PathBuf], filters: &[String]) -> Walk {
+pub fn create_walk_builder(ignores: &[String], filters: &[String]) -> Walk {
     let mut builder = WalkBuilder::new(".");
+    
+    // Enable .gitignore functionality
+    builder.git_ignore(true);
+    builder.hidden(false); // Don't ignore hidden files by default
+    
+    // Add custom ignore patterns
     let ignore_patterns: Vec<Pattern> = ignores
         .iter()
-        .filter_map(|path| path.to_str().and_then(|s| Pattern::new(s).ok()))
+        .filter_map(|s| Pattern::new(s).ok())
         .collect();
 
-    let filter_patterns: Vec<glob::Pattern> = filters
+    let filter_patterns: Vec<Pattern> = filters
         .iter()
-        .filter_map(|f| glob::Pattern::new(f).ok())
+        .filter_map(|f| Pattern::new(f).ok())
         .collect();
 
     builder.filter_entry(move |entry| {
         let path = entry.path();
 
-        // Always include directories to traverse into them
+        // Explicitly ignore .git directories
+        if path.components().any(|c| c.as_os_str() == ".git") {
+            return false;
+        }
+
+        // For directories other than .git, include them to traverse
         if entry.file_type().map_or(false, |ft| ft.is_dir()) {
             return true;
         }
@@ -35,4 +46,4 @@ pub fn create_walk_builder(ignores: &[PathBuf], filters: &[String]) -> Walk {
     });
 
     builder.build()
-} 
+}

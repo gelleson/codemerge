@@ -6,11 +6,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tiktoken_rs::CoreBPE;
 use glob::Pattern;
+use crate::file_ops::create_walk_builder;
 
 pub fn merge_files(
     base_path: &Path,
     output: Option<&Path>,
-    ignores: &[String], // Change to String for glob patterns
+    ignores: &[String],
     filters: &[String],
     verbose: bool,
     file_name: bool,
@@ -25,7 +26,12 @@ pub fn merge_files(
     }));
 
     let total_tokens = Arc::new(Mutex::new(0));
-    let entries = get_filtered_entries(base_path, ignores, filters)?;
+    
+    let walker = create_walk_builder(ignores, filters);
+    let entries: Vec<_> = walker
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().map_or(false, |ft| ft.is_file()))
+        .collect();
 
     // Process files in parallel
     entries.into_par_iter().for_each(|entry| {
@@ -38,15 +44,10 @@ pub fn merge_files(
         if file_name {
             writeln!(writer.lock().unwrap(), "{}", path.display()).unwrap();
         } else {
-            // Write file header
-            writeln!(writer.lock().unwrap(), "// File: {}", path.display()).unwrap();
-
-            // Get relative path and read contents
-            let relative_path = path.to_string_lossy().to_string();
-
-            match read_file_contents(&relative_path) {
+            // Read contents
+            match read_file_contents(&path.to_string_lossy()) {
                 Ok((contents, file_tokens)) => {
-                    // Write file contents immediately after header
+                    writeln!(writer.lock().unwrap(), "// File: {}", path.display()).unwrap();
                     writeln!(writer.lock().unwrap(), "{}", contents).unwrap();
                     
                     let mut total = total_tokens.lock().unwrap();
@@ -69,48 +70,6 @@ pub fn merge_files(
         eprintln!("Merged files into: {}", path.display());
     }
     Ok(())
-}
-
-fn get_filtered_entries(
-    base_path: &Path,
-    ignores: &[String],
-    filters: &[String],
-) -> io::Result<Vec<fs::DirEntry>> {
-    let mut entries = Vec::new();
-
-    if base_path.exists() {
-        for entry in fs::read_dir(base_path)? {
-            let entry = entry?;
-            let path = entry.path();
-            
-            if path.is_dir() {
-                // Recursively search subdirectories
-                let mut subdir_entries = get_filtered_entries(&path, ignores, filters)?;
-                entries.append(&mut subdir_entries);
-            } else if path.is_file() {
-                // Use the full path string for pattern matching
-                let path_str = path.to_string_lossy().to_string();
-                
-                // Check if the path matches any of the filters using glob patterns
-                let matches_filter = filters.is_empty() || filters.iter().any(|f| {
-                    let pattern = Pattern::new(f).unwrap();
-                    pattern.matches(&path_str)
-                });
-
-                // Check if the path is ignored using glob patterns
-                let matches_ignore = ignores.iter().any(|i| {
-                    let pattern = Pattern::new(i).unwrap();
-                    pattern.matches(&path_str)
-                });
-
-                if matches_filter && !matches_ignore {
-                    entries.push(entry);
-                }
-            }
-        }
-    }
-
-    Ok(entries)
 }
 
 fn read_file_contents(path: &str) -> Result<(String, usize), io::Error> {
@@ -142,22 +101,26 @@ pub fn calculate_tokens(
     let file_tokens: Arc<Mutex<HashMap<PathBuf, usize>>> = Arc::new(Mutex::new(HashMap::new()));
     let total_tokens = Arc::new(Mutex::new(0));
 
-    let entries = get_filtered_entries(Path::new("."), ignores, filters)?;
+    let walker = create_walk_builder(ignores, filters);
+    let entries: Vec<_> = walker
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().map_or(false, |ft| ft.is_file()))
+        .collect();
 
     entries
         .into_par_iter()
         .for_each(|entry| {
             let path = entry.path();
-            let cloned_path = path.clone();
+            let cloned_path = path;
             let tokens = count_file_tokens(&path, &bpe).unwrap();
             let mut file_tokens = file_tokens.lock().unwrap();
-            file_tokens.insert(path, tokens);
+            file_tokens.insert(path.to_path_buf(), tokens);
 
             let mut total = total_tokens.lock().unwrap();
             *total += tokens;
 
             if verbose {
-                println!("Tokens in {}: {}", cloned_path.clone().to_string_lossy(), tokens);
+                println!("Tokens in {}: {}", cloned_path.to_string_lossy(), tokens);
             }
         });
 
