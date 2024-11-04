@@ -36,6 +36,7 @@ Additional options:
 - `-i, --ignores`: Specify files/directories to ignore (can be used multiple times)
 - `-v, --verbose`: Enable verbose output mode
 - `-f, --filter`: Specify a filter pattern (can be used multiple times)
+- `-n, --file-names-only`: Print only file names
 
 ### Calculating Tokens
 

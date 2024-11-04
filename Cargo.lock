@@ -110,7 +110,7 @@ dependencies = [
 
 [[package]]
 name = "codemerge"
-version = "0.3.1"
+version = "0.3.3"
 dependencies = [
  "glob",
  "ignore",
@@ -120,6 +120,7 @@ dependencies = [
  "tempfile",
  "tiktoken-rs",
  "vfs",
+ "walkdir",
 ]
 
 [[package]]
