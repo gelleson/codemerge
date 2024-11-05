@@ -273,6 +273,7 @@ dependencies = [
  "csv",
  "glob",
  "ignore",
+ "indicatif 0.16.2",
  "rayon",
  "regex",
  "serde",
@@ -608,6 +609,18 @@ checksum = "707907fe3c25f5424cce2cb7e1cbcafee6bdbe735ca90ef77c29e84591e5b9da"
 dependencies = [
  "equivalent",
  "hashbrown",
+]
+
+[[package]]
+name = "indicatif"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d207dc617c7a380ab07ff572a6e52fa202a2a8f355860ac9c38e23f8196be1b"
+dependencies = [
+ "console",
+ "lazy_static",
+ "number_prefix",
+ "regex",
 ]
 
 [[package]]
@@ -1252,7 +1265,7 @@ dependencies = [
  "derive_builder",
  "esaxx-rs",
  "getrandom",
- "indicatif",
+ "indicatif 0.17.8",
  "itertools 0.12.1",
  "lazy_static",
  "log",

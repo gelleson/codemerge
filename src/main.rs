@@ -8,6 +8,7 @@ use codemerge::file_ops::create_walk_builder;
 use chrono::Local;
 use codemerge::output_format::{create_formatter, AnalysisReport, TokenAnalysis};
 use codemerge::config::{ProjectConfig, CliConfig};
+use indicatif::{ProgressBar, ProgressStyle};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = CodeMerge::parse();
@@ -152,6 +153,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .filter(|entry| entry.file_type().map_or(false, |ft| ft.is_file()))
                 .collect();
 
+            // Initialize progress bar
+            let pb = ProgressBar::new(entries.len() as u64);
+            pb.set_style(ProgressStyle::default_bar()
+                .template("{msg} [{bar:40}] {percent:>3}% | ETA: {eta} | {pos}/{len} files")
+                .progress_chars("##-"));
+
             entries.into_par_iter().for_each(|entry| {
                 let path = entry.path().to_path_buf();
                 if let Ok(content) = std::fs::read_to_string(&path) {
@@ -166,8 +173,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Err(e) => eprintln!("Error processing {}: {}", path.display(), e),
                     }
                 }
+                pb.inc(1); // Increment progress bar
             });
-            
+
+            pb.finish_with_message("Token counting complete.");
+
             // Sort and display top N files by token count
             let tokens_guard = file_tokens.lock().unwrap();
             let mut files: Vec<(&PathBuf, &usize)> = tokens_guard.iter().collect();
