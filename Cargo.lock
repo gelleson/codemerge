@@ -265,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "codemerge"
-version = "0.4.2"
+version = "0.5.0"
 dependencies = [
  "chrono",
  "clap 4.5.20",
