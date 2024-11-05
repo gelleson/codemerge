@@ -58,5 +58,17 @@ pub enum Commands {
         /// Show verbose output
         #[clap(short, long)]
         verbose: bool,
+
+        /// Output format (json, csv, markdown)
+        #[clap(long, default_value = "markdown")]
+        format: String,
+
+        /// Output file path
+        #[clap(short, long)]
+        output: Option<PathBuf>,
+
+        /// Additional metadata fields (key=value pairs)
+        #[clap(long)]
+        metadata: Vec<String>,
     },
 } 

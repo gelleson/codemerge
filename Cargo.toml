@@ -19,3 +19,7 @@ walkdir = "2.3"
 thiserror = "1.0"
 clap = { version = "4.5.20", features = ["derive"] }
 claude-tokenizer = "0.3.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+csv = "1.2"
+chrono = "0.4"

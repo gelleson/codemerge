@@ -5,6 +5,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use rayon::prelude::*;
 use codemerge::file_ops::create_walk_builder;
+use chrono::Local;
+use codemerge::output_format::{create_formatter, AnalysisReport, TokenAnalysis};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = CodeMerge::parse();
@@ -40,6 +42,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ignores,
             filters,
             verbose,
+            format,
+            output,
+            metadata,
         } => {
             let config = TokenConfig {
                 model: model.clone(),
@@ -88,6 +93,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(budget_val) = budget {
                 println!("Budget remaining: {}", 
                     budget_val.saturating_sub(total_usage));
+            }
+            
+            // Parse metadata
+            let metadata_map: HashMap<String, String> = metadata.iter()
+                .filter_map(|s| {
+                    let parts: Vec<&str> = s.split('=').collect();
+                    if parts.len() == 2 {
+                        Some((parts[0].to_string(), parts[1].to_string()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            
+            // Create analysis report
+            let report = AnalysisReport {
+                files: tokens_guard.iter()
+                    .map(|(path, &count)| TokenAnalysis {
+                        file_path: path.clone(),
+                        token_count: count,
+                        metadata: metadata_map.clone(),
+                    })
+                    .collect(),
+                total_tokens: total_usage,
+                budget: *budget,
+                budget_remaining: budget.map(|b| b.saturating_sub(total_usage)),
+                model: model.clone(),
+                timestamp: Local::now().to_rfc3339(),
+            };
+            
+            // Format and output
+            let formatter = create_formatter(format)?;
+            let output_str = formatter.format(&report)?;
+            
+            if let Some(output_path) = output {
+                std::fs::write(output_path, output_str)?;
+                println!("Report written to: {}", output_path.display());
+            } else {
+                println!("{}", output_str);
             }
         }
     }
