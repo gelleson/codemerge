@@ -24,6 +24,12 @@ pub enum Commands {
         verbose: bool,
         #[clap(short = 'n', long = "file-names-only", help = "Print only file names")]
         file_name: bool,
+        /// Configuration file path
+        #[clap(long)]
+        config: Option<PathBuf>,
+        /// Override configuration file
+        #[clap(long)]
+        no_config: bool,
     },
     /// Token management commands
     Tokens {
@@ -70,5 +76,13 @@ pub enum Commands {
         /// Additional metadata fields (key=value pairs)
         #[clap(long)]
         metadata: Vec<String>,
+
+        /// Configuration file path
+        #[clap(long)]
+        config: Option<PathBuf>,
+
+        /// Override configuration file
+        #[clap(long)]
+        no_config: bool,
     },
 } 
