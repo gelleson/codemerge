@@ -1,11 +1,10 @@
 use rayon::prelude::*;
 use std::collections::HashMap;
-use std::fs::{self, File};
+use std::fs::{File};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tiktoken_rs::CoreBPE;
-use glob::Pattern;
 use crate::file_ops::create_walk_builder;
 
 pub fn merge_files(

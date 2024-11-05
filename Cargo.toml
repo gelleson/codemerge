@@ -16,4 +16,6 @@ vfs = "0.12.0"
 tiktoken-rs = "0.5.9"
 rayon = "1.10.0"
 walkdir = "2.3"
-
+thiserror = "1.0"
+clap = { version = "4.5.20", features = ["derive"] }
+claude-tokenizer = "0.3.0"

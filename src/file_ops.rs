@@ -1,6 +1,5 @@
 use glob::Pattern;
 use ignore::{Walk, WalkBuilder};
-use std::path::PathBuf;
 
 pub fn create_walk_builder(ignores: &[String], filters: &[String]) -> Walk {
     let mut builder = WalkBuilder::new(".");

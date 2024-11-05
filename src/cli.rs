@@ -1,39 +1,62 @@
-use structopt::StructOpt;
 use std::path::PathBuf;
+use clap::{Parser, Subcommand};
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "codemerge")]
-pub enum CodeMerge {
-    #[structopt(
-        name = "merge",
-        about = "Merge multiple code files into a single output file"
-    )]
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
+pub struct CodeMerge {
+    #[clap(subcommand)]
+    pub command: Commands,
+}
+
+#[derive(Subcommand)]
+pub enum Commands {
+    /// Merge code files
     Merge {
-        #[structopt(parse(from_os_str))]
+        #[arg(value_parser)]
         path: Option<PathBuf>,
-        #[structopt(short, long, parse(from_os_str))]
+        #[arg(short, long, value_parser)]
         output: Option<PathBuf>,
-        #[structopt(short, long,)]
+        #[clap(short, long)]
         ignores: Vec<String>,
-        #[structopt(short = "f", long = "filter")]
+        #[clap(short = 'f', long = "filter")]
         filters: Vec<String>,
-        #[structopt(short, long)]
+        #[clap(short, long)]
         verbose: bool,
-        #[structopt(short = "n", long = "file-names-only", help = "Print only file names")]
+        #[clap(short = 'n', long = "file-names-only", help = "Print only file names")]
         file_name: bool,
     },
-    #[structopt(
-        name = "tokens",
-        about = "Calculate token counts for multiple code files"
-    )]
+    /// Token management commands
     Tokens {
-        #[structopt(short, long, default_value = "10")]
+        /// Tokenizer model to use (gpt-3.5, gpt-4, claude)
+        #[clap(long, default_value = "gpt-3.5")]
+        model: String,
+
+        /// Token budget limit
+        #[clap(long)]
+        budget: Option<usize>,
+
+        /// Warning threshold as percentage of budget (0.0-1.0)
+        #[clap(long, default_value = "0.8")]
+        warning_threshold: f32,
+
+        /// Base directory to analyze
+        #[clap(value_parser, default_value = ".")]
+        path: PathBuf,
+
+        /// Number of top files to show
+        #[clap(short = 'n', long, default_value = "10")]
         count: usize,
-        #[structopt(short, long, )]
+
+        /// Ignore patterns
+        #[clap(short, long)]
         ignores: Vec<String>,
-        #[structopt(short = "f", long = "filter")]
+
+        /// File filters
+        #[clap(short = 'f', long = "filter")]
         filters: Vec<String>,
-        #[structopt(short, long)]
+
+        /// Show verbose output
+        #[clap(short, long)]
         verbose: bool,
     },
 } 
