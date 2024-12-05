@@ -5,6 +5,7 @@ import {
 } from '@modules/handlers/merge.ts';
 import { buildTreeCLI, tree } from "@modules/handlers/tree.ts";
 import { buildTokensCLI, tokens } from "@modules/handlers/tokens.ts";
+import { buildInitCLI, initCLI } from "@modules/handlers/init.ts";
 
 /**
  * Entry point for the command-line interface (CLI) application.
@@ -32,6 +33,13 @@ cli
         //@ts-ignore - buildTokensCLI is not a valid type
         buildTokensCLI, // Function to setup CLI options for the tokens command
         tokens          // Function to execute the tokens command logic
+    )
+    .command(
+        'init',    // Command name
+        'Initializes a CodeMerge configuration file.', // Detailed description of the 'init' command
+        //@ts-ignore - buildInitCLI is not a valid type
+        buildInitCLI, // Function to setup CLI options for the init command
+        initCLI          // Function to execute the init command logic
     )
     .version()
     .argv;            // Triggers the argv parsing
