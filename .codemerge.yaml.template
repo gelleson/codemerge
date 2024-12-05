@@ -1,0 +1,20 @@
+version: 1  # This specifies the version of the CodeMerge configuration format being used.
+
+# This is a CodeMerge configuration file. It outlines how files should be processed and merged.
+# For detailed instructions and options, refer to the project's official documentation:
+# https://github.com/gelleson/codemerge
+
+contexts:
+  # Contexts define specific scenarios or configurations for merging files.
+  - context: default  # The 'default' context is used when no specific context is provided.
+
+    filters:
+      # Filters are patterns that specify which files or directories should be considered
+      # for merging operations. A pattern of "**" means to include all files/subdirectories.
+      - "**"
+
+    ignores:
+      # Ignores define patterns for files or directories that should be excluded from merging.
+      # These patterns are useful for skipping temporary files, system files, or source control directories.
+      - ".git/"  # Ignore all contents within the .git directory used for version control.
+      - "*.lock"  # Ignore all lock files, often used by package managers to lock dependencies.

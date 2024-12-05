@@ -5,6 +5,7 @@ import { loadAll, type LoadResult } from "@modules/loader";
 import { join } from "path";
 import { compose, enabled, removeHighBudget, removeLowBudget, staticFilters } from "@modules/filters";
 import { emptyContentFilter } from "@modules/filters/content.ts";
+import { load, mergeWithDefaults } from "@modules/config";
 
 /**
  * Token options interface to specify configurations for token operations
@@ -20,6 +21,10 @@ type TokensOptions = {
     minBudget: number;
     limitByHighBudget: boolean;
     limitByLowBudget: boolean;
+    config?: string;
+    ignoreConfig?: boolean;
+    configPath?: string;
+    context?: string;
 };
 
 /**
@@ -100,6 +105,31 @@ export function buildTokensCLI(cli: Argv<any>): Argv<any> {
         description: 'Apply low budget limit filter.',
         default: false,
     });
+    cli.option('config', {
+        type: 'string',
+        alias: 'c',
+        group: 'Config',
+        description: 'Path to config file.',
+        default: undefined,
+    });
+    cli.option('ignore-config', {
+        type: 'boolean',
+        group: 'Config',
+        description: 'Ignore config file.',
+        default: false,
+    });
+    cli.option('config-path', {
+        type: 'string',
+        group: 'Config',
+        description: 'Path to config file.',
+        default: undefined,
+    });
+    cli.option('context', {
+        type: 'string',
+        group: 'Config',
+        description: 'Context to use.',
+        default: undefined,
+    });
 
     return cli;
 }
@@ -110,6 +140,15 @@ export function buildTokensCLI(cli: Argv<any>): Argv<any> {
  * @param options - Configuration parameters for token operations.
  */
 export async function tokens(options: TokensOptions) {
+    const config = await load({
+        cwd: options.path,
+        configPath: options.configPath,
+        silent: options.configPath === undefined
+    });
+
+    if (!options.ignoreConfig && config) {
+        options = mergeWithDefaults(options, config);
+    }
     const files = await match({
         path: options.path,
         ignores: options.ignores,

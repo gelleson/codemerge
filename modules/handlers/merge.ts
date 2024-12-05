@@ -4,8 +4,8 @@ import { loadAll } from '@modules/loader';
 import { isCWD, match } from "@modules/matcher";
 import { formatter } from "@modules/formatters";
 import * as process from "node:process";
-import { compose, enabled, removeHighBudget, removeLowBudget, staticFilters } from "@modules/filters";
-import { emptyContentFilter } from "@modules/filters/content.ts";
+import { staticFilters } from "@modules/filters";
+import { load, mergeWithDefaults } from "@modules/config";
 
 /**
  * Options for configuring the merge process.
@@ -21,6 +21,10 @@ export type MergeOptions = {
     minBudget: number;
     limitByHighBudget: boolean;
     limitByLowBudget: boolean;
+    config?: string;
+    ignoreConfig?: boolean;
+    configPath?: string;
+    context?: string;
 }
 
 /**
@@ -106,6 +110,31 @@ export function buildMergeCLI(cli: Argv<{}>): Argv<{}> {
         description: 'Enable limiting by minimum budget.',
         default: false,
     });
+    cli.option('config', {
+        type: 'string',
+        alias: 'c',
+        group: 'Config',
+        description: 'Path to config file.',
+        default: undefined,
+    });
+    cli.option('ignore-config', {
+        type: 'boolean',
+        group: 'Config',
+        description: 'Ignore config file.',
+        default: false,
+    });
+    cli.option('config-path', {
+        type: 'string',
+        group: 'Config',
+        description: 'Path to config file.',
+        default: undefined,
+    });
+    cli.option('context', {
+        type: 'string',
+        group: 'Config',
+        description: 'Context to use.',
+        default: undefined,
+    });
 
     return cli;
 }
@@ -129,6 +158,17 @@ export function filterByTypes(types: string[]): (file: string) => boolean {
  * @param argv - The parsed arguments from the CLI input.
  */
 export async function merge(argv: ArgumentsCamelCase<MergeOptions>) {
+    const config = await load({
+        cwd: argv.path,
+        configPath: argv.configPath,
+        silent: argv.configPath === undefined,
+        context: argv.context,
+    });
+
+    if (!argv.ignoreConfig && config) {
+        argv = mergeWithDefaults(argv, config);
+    }
+
     // Match files based on provided options
     const files = await match({
         path: argv.path,

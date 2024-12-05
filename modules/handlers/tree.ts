@@ -4,6 +4,7 @@ import { buildTree, type Tree } from "@modules/loader/tree.ts";
 import type { ArgumentsCamelCase, Argv } from "yargs";
 import { compose, enabled, removeHighBudget, removeLowBudget, staticFilters } from "@modules/filters";
 import { emptyContentFilter } from "@modules/filters/content.ts";
+import { load, mergeWithDefaults } from "@modules/config";
 
 /**
  * Options for configuring the tree command functionality.
@@ -19,6 +20,10 @@ type TreeOptions = {
     minBudget: number;
     limitByHighBudget: boolean;
     limitByLowBudget: boolean;
+    config?: string;
+    ignoreConfig?: boolean;
+    configPath?: string;
+    context?: string;
 };
 
 /**
@@ -98,6 +103,33 @@ export function buildTreeCLI(cli: Argv<any>): Argv<any> {
         description: 'Apply low budget limit filter.',
         default: false,
     });
+    cli.option('config', {
+        type: 'string',
+        alias: 'c',
+        group: 'Config',
+        description: 'Path to config file.',
+        default: undefined,
+    });
+    cli.option('ignore-config', {
+        type: 'boolean',
+        group: 'Config',
+        description: 'Ignore config file.',
+        default: false,
+    });
+    cli.option('config-path', {
+        type: 'string',
+        group: 'Config',
+        description: 'Path to config file.',
+        default: undefined,
+    });
+    cli.option('context', {
+        type: 'string',
+        alias: 'ctx',
+        group: 'Config',
+        description: 'Context to use for config file.',
+        default: 'default',
+    });
+
 
     return cli;
 }
@@ -108,6 +140,16 @@ export function buildTreeCLI(cli: Argv<any>): Argv<any> {
  * @param options - The parsed options from the command-line arguments.
  */
 export async function tree(options: ArgumentsCamelCase<TreeOptions>) {
+    const config = await load({
+        cwd: options.path,
+        configPath: options.configPath,
+        silent: options.configPath === undefined,
+        context: options.context,
+    });
+
+    if (!options.ignoreConfig && config) {
+        options = mergeWithDefaults(config, options);
+    }
     // Retrieve files based on matching options
     const files = await match({
         path: options.path,

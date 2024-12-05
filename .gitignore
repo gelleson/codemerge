@@ -178,3 +178,5 @@ dist
 # Added by cargo
 
 /target
+
+.codemerge.yaml
