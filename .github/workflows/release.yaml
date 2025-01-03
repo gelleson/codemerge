@@ -16,12 +16,15 @@ jobs:
           - os: ubuntu-latest
             output: codemerge-linux
             rust-target: x86_64-unknown-linux-gnu
+            suffix: .so
           - os: macos-latest
             output: codemerge-macos
             rust-target: x86_64-apple-darwin
+            suffix: .dylib
           - os: windows-latest
             output: codemerge-windows.exe
             rust-target: x86_64-pc-windows-msvc
+            suffix: .dll
 
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +44,8 @@ jobs:
         run: |
           cd rust
           cargo build --release 
-          tree target/
+          cp target/release/libfile_reader${{ matrix.suffix }} target/release/libfile_reader.dylib
+          tree target/release/
           cd ..
 
       - name: Build CLI
