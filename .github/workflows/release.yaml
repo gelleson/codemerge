@@ -28,8 +28,6 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.rust-target }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -43,6 +41,7 @@ jobs:
         run: |
           cd rust
           cargo build --release --target ${{ matrix.rust-target }}
+          tree target/
           cd ..
 
       - name: Build CLI
