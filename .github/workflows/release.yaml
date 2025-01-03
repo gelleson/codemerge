@@ -40,7 +40,7 @@ jobs:
       - name: Build Rust library
         run: |
           cd rust
-          cargo build --release --target ${{ matrix.rust-target }}
+          cargo build --release 
           tree target/
           cd ..
 
