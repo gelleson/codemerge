@@ -23,6 +23,7 @@ type TokensOptions = {
     ignoreConfig?: boolean;
     configPath?: string;
     context?: string;
+    input?: boolean;
 };
 
 /**
@@ -128,6 +129,12 @@ export function buildTokensCLI(cli: Argv<any>): Argv<any> {
         description: 'Context to use.',
         default: undefined,
     });
+    cli.option('input', {
+        type: 'boolean',
+        group: 'Config',
+        description: 'Read input from stdin.',
+        default: false,
+    });
 
     return cli;
 }
@@ -152,6 +159,7 @@ export async function tokens(options: TokensOptions) {
         ignores: options.ignores,
         filters: options.filters,
         absolute: isCWD(options.path),
+        input: options.input,
     });
 
     const res = await loadAll(files);

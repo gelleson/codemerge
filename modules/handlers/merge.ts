@@ -25,6 +25,7 @@ export type MergeOptions = {
     ignoreConfig?: boolean;
     configPath?: string;
     context?: string;
+    input?: boolean;
 }
 
 /**
@@ -135,6 +136,12 @@ export function buildMergeCLI(cli: Argv<{}>): Argv<{}> {
         description: 'Context to use.',
         default: undefined,
     });
+    cli.option('input', {
+        type: 'boolean',
+        group: 'Config',
+        description: 'Read input from stdin.',
+        default: false,
+    });
 
     return cli;
 }
@@ -175,6 +182,7 @@ export async function merge(argv: ArgumentsCamelCase<MergeOptions>) {
         ignores: argv.ignores,
         filters: argv.filters,
         absolute: isCWD(argv.path),
+        input: argv.input,
     });
 
     const data = await loadAll(files);

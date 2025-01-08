@@ -24,6 +24,7 @@ type TreeOptions = {
     ignoreConfig?: boolean;
     configPath?: string;
     context?: string;
+    input?: boolean;
 };
 
 /**
@@ -129,6 +130,12 @@ export function buildTreeCLI(cli: Argv<any>): Argv<any> {
         description: 'Context to use for config file.',
         default: 'default',
     });
+    cli.option('input', {
+        type: 'boolean',
+        group: 'Config',
+        description: 'Read input from stdin.',
+        default: false,
+    });
 
 
     return cli;
@@ -156,6 +163,7 @@ export async function tree(options: ArgumentsCamelCase<TreeOptions>) {
         ignores: options.ignores,
         filters: options.filters,
         absolute: isCWD(options.path),
+        input: options.input,
     });
 
     const data = await loadAll(files);

@@ -8,6 +8,7 @@ type MatchOptions = {
     path: string
     ignores: string[]
     filters: string[]
+    input?: boolean
     absolute?: boolean
 }
 
@@ -42,9 +43,11 @@ export function isCWD(path: string): boolean {
 }
 
 export async function matchOrStdIn(options: MatchOptions) {
-    const stdinInput = await readStdin();
-    if (stdinInput.length > 0) {
-        return stdinInput;
+    if (options.input) {
+        const stdinInput = await readStdin();
+        if (stdinInput.length > 0) {
+            return stdinInput;
+        }
     }
     return await match(options);
 }
