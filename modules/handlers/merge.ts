@@ -1,7 +1,7 @@
 import type { ArgumentsCamelCase, Argv } from 'yargs';
 
 import { loadAll } from '@modules/loader';
-import { isCWD, match } from "@modules/matcher";
+import { isCWD, matchOrStdIn } from "@modules/matcher";
 import { formatter } from "@modules/formatters";
 import * as process from "node:process";
 import { staticFilters } from "@modules/filters";
@@ -170,7 +170,7 @@ export async function merge(argv: ArgumentsCamelCase<MergeOptions>) {
     }
 
     // Match files based on provided options
-    const files = await match({
+    const files = await matchOrStdIn({
         path: argv.path,
         ignores: argv.ignores,
         filters: argv.filters,

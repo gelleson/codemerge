@@ -1,4 +1,4 @@
-import { isCWD, match } from "@modules/matcher/matcher.ts";
+import { isCWD, match, matchOrStdIn } from "@modules/matcher/matcher.ts";
 import { loadAll } from "@modules/loader";
 import { buildTree, type Tree } from "@modules/loader/tree.ts";
 import type { ArgumentsCamelCase, Argv } from "yargs";
@@ -151,7 +151,7 @@ export async function tree(options: ArgumentsCamelCase<TreeOptions>) {
         options = mergeWithDefaults(config, options);
     }
     // Retrieve files based on matching options
-    const files = await match({
+    const files = await matchOrStdIn({
         path: options.path,
         ignores: options.ignores,
         filters: options.filters,

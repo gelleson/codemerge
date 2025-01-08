@@ -1,10 +1,8 @@
 import type { Argv } from "yargs";
-import { isCWD, match } from "@modules/matcher";
+import { isCWD, matchOrStdIn } from "@modules/matcher";
 import { sort } from "@modules/tokens";
 import { loadAll, type LoadResult } from "@modules/loader";
-import { join } from "path";
-import { compose, enabled, removeHighBudget, removeLowBudget, staticFilters } from "@modules/filters";
-import { emptyContentFilter } from "@modules/filters/content.ts";
+import { staticFilters } from "@modules/filters";
 import { load, mergeWithDefaults } from "@modules/config";
 
 /**
@@ -149,7 +147,7 @@ export async function tokens(options: TokensOptions) {
     if (!options.ignoreConfig && config) {
         options = mergeWithDefaults(options, config);
     }
-    const files = await match({
+    const files = await matchOrStdIn({
         path: options.path,
         ignores: options.ignores,
         filters: options.filters,

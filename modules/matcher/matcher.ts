@@ -2,6 +2,7 @@ import { buildGitIgnores, gitignore } from "@modules/gitignore";
 //@ts-ignore
 import { glob } from "glob-gitignore";
 import { join } from "path";
+import { readStdin } from "@modules/loader";
 
 type MatchOptions = {
     path: string
@@ -38,4 +39,12 @@ export async function match(options: MatchOptions) {
 export function isCWD(path: string): boolean {
     //@ts-ignore
     return Bun.cwd !== path;
+}
+
+export async function matchOrStdIn(options: MatchOptions) {
+    const stdinInput = await readStdin();
+    if (stdinInput.length > 0) {
+        return stdinInput;
+    }
+    return await match(options);
 }
