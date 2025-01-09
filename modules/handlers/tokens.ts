@@ -24,6 +24,7 @@ type TokensOptions = {
     configPath?: string;
     context?: string;
     input?: boolean;
+    format?: "plain" | "json";
 };
 
 /**
@@ -135,6 +136,12 @@ export function buildTokensCLI(cli: Argv<any>): Argv<any> {
         description: 'Read input from stdin.',
         default: false,
     });
+    cli.option('format', {
+        type: 'string',
+        group: 'Config',
+        description: 'Output format.',
+        default: 'plain',
+    });
 
     return cli;
 }
@@ -181,8 +188,22 @@ export async function tokens(options: TokensOptions) {
         console.log("No files found");
         return;
     }
-    printTokenBoard(sorted);
-    printTokenTotal(results);
+
+    if (options.format === 'plain') {
+        printTokenBoard(sorted);
+        printTokenTotal(results);
+        return;
+    }
+    if (options.format === 'json') {
+        console.log(JSON.stringify({
+            total: results.reduce((value, item) => value + item.tokens, 0),
+            results: sorted.map(value => ({
+                tokens: value.tokens,
+                path: value.path,
+            })),
+        }));
+        return;
+    }
 }
 
 /**
