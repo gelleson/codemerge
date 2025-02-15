@@ -22,9 +22,6 @@ pub enum Error {
 
     #[error("Filter error: {0}")]
     Filter(String),
-
-    #[error("Processing error: {0}")]
-    Processing(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

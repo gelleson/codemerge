@@ -4,20 +4,16 @@ set dotenv-load
 rust-build:
     cargo build --release
 
-install:
-    bun install
-
-build: rust-build install
-    bun build --compile index.ts --minify --outfile=dist/codemerge
+build: rust-build
 
 test:
-    bun test
+    cargo test
 
 test-watch:
-    bun test --watch
+    cargo watch
 
 binary-install: build
-    sudo cp dist/codemerge /usr/local/bin/codemerge
+    sudo cp target/release/codemerge /usr/local/bin/codemerge
 
 changelog:
     @echo "Generating changelog for the orphan branch..."
