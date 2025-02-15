@@ -1,4 +1,13 @@
 #!/bin/bash
+#
+# Codemerge Installer
+#
+# This script installs the 'codemerge' CLI tool by fetching the latest
+# release from GitHub, determining your OS/architecture, downloading the correct
+# asset, extracting it, and installing the binary into /usr/local/bin.
+#
+# License: MIT
+#
 
 set -euo pipefail
 
@@ -11,63 +20,110 @@ BINARY="codemerge"
 # Cleanup temporary directory on exit
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-# Logging functions
+##########################
+# Logging Functions
+##########################
+
+# log: Write an informational message to stderr.
+# Arguments:
+#   $1 - The message to log.
 log() {
-    echo "[INFO] $1"
+    echo "[INFO] $1" >&2
 }
 
+# error: Write an error message to stderr and exit.
+# Arguments:
+#   $1 - The error message.
 error() {
     echo "[ERROR] $1" >&2
     exit 1
 }
 
-# Fetch the latest release tag from GitHub
+##########################
+# GitHub Release Utilities
+##########################
+
+# get_latest_release: Retrieve the latest release tag from GitHub.
+# Outputs:
+#   The latest release tag.
 get_latest_release() {
     log "Fetching the latest release tag from GitHub..."
-    TAG=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    if [ -z "$TAG" ]; then
+    local tag
+    tag=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" \
+          | grep '"tag_name":' \
+          | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -z "$tag" ]; then
         error "Failed to fetch the latest release tag."
     fi
-    echo "$TAG"
+    echo "$tag"
 }
 
-# Determine the correct asset based on OS and architecture
+##########################
+# Asset Determination
+##########################
+
+# get_asset_name: Determine the correct asset file name based on OS and architecture.
+# Outputs:
+#   The asset file name.
 get_asset_name() {
-    OS="$(uname -s)"
-    ARCH="$(uname -m)"
+    local os arch
+    os="$(uname -s)"
+    arch="$(uname -m)"
 
-    case "$OS" in
-        Darwin) OS="Darwin" ;;
-        Linux)  OS="Linux" ;;
-        *)      error "Unsupported OS: $OS" ;;
+    case "$os" in
+        Darwin)
+            os="Darwin"
+            ;;
+        Linux)
+            os="Linux"
+            ;;
+        *)
+            error "Unsupported OS: $os"
+            ;;
     esac
 
-    case "$ARCH" in
-        x86_64) ARCH="x86_64" ;;
-        arm64)  ARCH="arm64" ;;
-        *)      error "Unsupported architecture: $ARCH" ;;
+    case "$arch" in
+        x86_64)
+            arch="x86_64"
+            ;;
+        arm64)
+            arch="arm64"
+            ;;
+        *)
+            error "Unsupported architecture: $arch"
+            ;;
     esac
 
-    echo "codemerge_${OS}_${ARCH}.tar.gz"
+    echo "codemerge_${os}_${arch}.tar.gz"
 }
 
-# Download and extract the asset
-download_and_extract() {
-    ASSET_NAME="$1"
-    ASSET_URL="https://github.com/${REPO}/releases/download/${LATEST_TAG}/${ASSET_NAME}"
+##########################
+# Download and Extraction
+##########################
 
-    log "Downloading asset: $ASSET_NAME..."
-    if ! curl -L "$ASSET_URL" --output "$TMP_DIR/$ASSET_NAME"; then
-        error "Failed to download asset: $ASSET_URL"
+# download_and_extract: Download and extract the release asset.
+# Arguments:
+#   $1 - The asset file name.
+download_and_extract() {
+    local asset_name="$1"
+    local asset_url="https://github.com/${REPO}/releases/download/${LATEST_TAG}/${asset_name}"
+
+    log "Downloading asset: $asset_name..."
+    if ! curl -L "$asset_url" --output "$TMP_DIR/$asset_name"; then
+        error "Failed to download asset: $asset_url"
     fi
 
     log "Extracting asset..."
-    if ! tar -xzf "$TMP_DIR/$ASSET_NAME" -C "$TMP_DIR"; then
-        error "Failed to extract asset: $ASSET_NAME"
+    if ! tar -xzf "$TMP_DIR/$asset_name" -C "$TMP_DIR"; then
+        error "Failed to extract asset: $asset_name"
     fi
 }
 
-# Install the binary
+##########################
+# Binary Installation
+##########################
+
+# install_binary: Install the extracted binary to INSTALL_DIR.
 install_binary() {
     if [ ! -f "$TMP_DIR/$BINARY" ]; then
         error "Binary '$BINARY' not found in extracted files."
@@ -78,21 +134,26 @@ install_binary() {
     sudo chmod +x "$INSTALL_DIR/$BINARY"
 }
 
-# Main function
+##########################
+# Main Function
+##########################
+
+# main: The main entry point of the installer.
 main() {
     log "Starting installation of 'codemerge'..."
 
-    LATEST_TAG=$(get_latest_release)
+    LATEST_TAG="$(get_latest_release)"
     log "Latest release tag: $LATEST_TAG"
 
-    ASSET_NAME=$(get_asset_name)
-    log "Asset to download: $ASSET_NAME"
+    local asset_name
+    asset_name="$(get_asset_name)"
+    log "Asset to download: $asset_name"
 
-    download_and_extract "$ASSET_NAME"
+    download_and_extract "$asset_name"
     install_binary
 
     log "Installation complete! You can now use 'codemerge' from the command line."
 }
 
-# Run the script
+# Execute the main function
 main
