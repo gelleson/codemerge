@@ -174,9 +174,8 @@ dist
 # Finder (MacOS) folder config
 .DS_Store
 
-
 # Added by cargo
 
-/target
+target/
 
 .codemerge.yaml

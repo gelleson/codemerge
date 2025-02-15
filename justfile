@@ -1,26 +1,23 @@
-#!/usr/bin/env just --justfile
 export PATH := join(justfile_directory(), "node_modules", "bin") + ":" + env_var('PATH')
 set dotenv-load
 
 rust-build:
-    @cd rust && cargo build --release
+    cargo build --release
 
 install:
-    @bun install
+    bun install
 
 build: rust-build install
-    @bun build --compile index.ts --minify --outfile=dist/codemerge
+    bun build --compile index.ts --minify --outfile=dist/codemerge
 
 test:
-    @bun test
+    bun test
 
 test-watch:
-    @bun test --watch
+    bun test --watch
 
 binary-install: build
-    @sudo cp dist/codemerge /usr/local/bin/codemerge
-
-
+    sudo cp dist/codemerge /usr/local/bin/codemerge
 
 changelog:
     @echo "Generating changelog for the orphan branch..."
