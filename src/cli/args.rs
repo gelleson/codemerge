@@ -47,11 +47,11 @@ pub enum Commands {
         min_budget: usize,
 
         /// Enable high-budget filtering
-        #[arg(long = "limit-by-high-budget")]
+        #[arg(long = "limit-by-high-budget", short = 'H')]
         limit_by_high_budget: bool,
 
         /// Enable low-budget filtering
-        #[arg(long = "limit-by-low-budget")]
+        #[arg(long = "limit-by-low-budget", short = 'L')]
         limit_by_low_budget: bool,
 
         /// Use specific config context
@@ -94,11 +94,11 @@ pub enum Commands {
         min_budget: usize,
 
         /// Enable high-budget filtering
-        #[arg(long = "limit-by-high-budget")]
+        #[arg(long = "limit-by-high-budget", short = 'H')]
         limit_by_high_budget: bool,
 
         /// Enable low-budget filtering
-        #[arg(long = "limit-by-low-budget")]
+        #[arg(long = "limit-by-low-budget", short = 'L')]
         limit_by_low_budget: bool,
 
         /// Use specific config context
@@ -145,11 +145,11 @@ pub enum Commands {
         min_budget: usize,
 
         /// Enable high-budget filtering
-        #[arg(long = "limit-by-high-budget")]
+        #[arg(long = "limit-by-high-budget", short = 'H')]
         limit_by_high_budget: bool,
 
         /// Enable low-budget filtering
-        #[arg(long = "limit-by-low-budget")]
+        #[arg(long = "limit-by-low-budget", short = 'L')]
         limit_by_low_budget: bool,
 
         /// Use specific config context
