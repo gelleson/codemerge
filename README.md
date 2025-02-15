@@ -1,6 +1,6 @@
-# Codemerge: A CLI Tool for Merging and Analyzing Code
+Merging and Analyzing Code
 
-`codemerge` is a command-line interface (CLI) tool built with Bun and Rust for merging and analyzing codebases. It leverages Rust for performance-critical tasks like file I/O and token counting, while using TypeScript and Bun for the CLI and higher-level logic. The tool allows you to merge files, display file tree structures, and calculate token counts, all while respecting `.gitignore` files and offering various filtering options.
+`codemerge` is a command-line interface (CLI) tool built with Rust for merging and analyzing codebases. It leverages Rust for performance-critical tasks like file I/O and token counting, while using TypeScript for the CLI and higher-level logic. The tool allows you to merge files, display file tree structures, and calculate token counts, all while respecting `.gitignore` files and offering various filtering options.
 
 ## Features
 
@@ -14,13 +14,41 @@
 
 ## Installation
 
-1. **Install Bun:** If you don't have Bun installed, download it from [https://bun.sh/](https://bun.sh/).
+### One-Line Install
 
-2. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/gelleson/codemerge.git
-   cd codemerge
-   ```
+To install `codemerge` on Linux or macOS, run the following command:
+
+```bash
+curl -sL https://raw.githubusercontent.com/gelleson/codemerge/main/scripts/install.sh | sudo bash
+```
+
+After installation, you can use the `codemerge` command directly.
+
+### Manual Installation
+
+1. **Clone the Repository:**
+
+```bash
+git clone https://github.com/gelleson/codemerge.git
+cd codemerge
+```
+
+2. **Build and Install from Source:**
+
+   - **Install Rust:** Ensure you have Rust installed. You can install Rust using `rustup`:
+
+     ```bash
+     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+     ```
+
+   - **Build and Install:**
+
+     ```bash
+     cargo build --release
+     sudo mv target/release/codemerge /usr/local/bin
+     ```
+
+     This will build the project and install the `codemerge` binary.
 
 ## Usage
 
@@ -86,7 +114,6 @@ codemerge tokens [options]
 ## Previous Versions and Evolution of CodeMerge
 
 The initial version of CodeMerge was developed in Go, and it is available on the `/go` branch of the repository, although it is no longer maintained. The subsequent version was rewritten in Rust, offering enhanced performance, safety, and ecosystem benefits, especially with the use of the `tiktoken-rs` library for token counting.
-The latest, third-generation version combines Bun JS and Rust. This modern approach improves maintainability and performance, capitalizing on Bun for the command-line interface and TypeScript for higher-level logic, while utilizing Rust for performance-critical tasks.
 
 ## Contributing
 
