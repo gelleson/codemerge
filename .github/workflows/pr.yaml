@@ -28,7 +28,8 @@ jobs:
 
       - name: Run tests
         run: cargo test --all
-
+        env:
+          RUSTFLAGS: "--cfg ci"
       - name: Clippy lints
         run: cargo clippy -- -D warnings
 
