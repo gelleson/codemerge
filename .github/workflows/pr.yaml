@@ -35,24 +35,3 @@ jobs:
 
       - name: Check formatting
         run: cargo fmt --all -- --check
-
-  coverage:
-    name: Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-
-      - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
-
-      - name: Generate coverage report
-        run: cargo tarpaulin --out Xml
-
-      - name: Upload coverage report
-        uses: codecov/codecov-action@v3
