@@ -4,7 +4,7 @@ use std::path::Path;
 use crate::cli::args::{Cli, Commands};
 use crate::config::{self, Config};
 use crate::core::{file, tokens, tree};
-use crate::utils::{filters, format, finder};
+use crate::utils::{filters, finder, format};
 
 pub fn execute(cli: Cli) -> Result<()> {
     match cli.command {
@@ -29,7 +29,7 @@ pub fn execute(cli: Cli) -> Result<()> {
                 Config::default()
             };
 
-            let files = if input {
+            let files = if input || finder::has_stdin_pipe() {
                 finder::read_from_stdin()?
             } else {
                 finder::find_files(
@@ -71,7 +71,7 @@ pub fn execute(cli: Cli) -> Result<()> {
                 Config::default()
             };
 
-            let files = if input {
+            let files = if input || finder::has_stdin_pipe() {
                 finder::read_from_stdin()?
             } else {
                 finder::find_files(
@@ -116,7 +116,7 @@ pub fn execute(cli: Cli) -> Result<()> {
                 Config::default()
             };
 
-            let files = if input {
+            let files = if input || finder::has_stdin_pipe() {
                 finder::read_from_stdin()?
             } else {
                 finder::find_files(
@@ -147,9 +147,7 @@ pub fn execute(cli: Cli) -> Result<()> {
             Ok(())
         }
 
-        Commands::Init { file_name, force } => {
-            init_config(&file_name, force)
-        }
+        Commands::Init { file_name, force } => init_config(&file_name, force),
     }
 }
 
