@@ -4,8 +4,8 @@ use clap::Parser;
 mod cli;
 mod config;
 mod core;
-mod utils;
 mod error;
+mod utils;
 
 use cli::args::Cli;
 

@@ -174,7 +174,7 @@ impl GitignoreManager {
         let normalized_path = self.normalize_path_for_matching(relative_path);
 
         // (Changed variable name: dir → _dir)
-        for (_dir, patterns) in &self.ignore_patterns {
+        for patterns in self.ignore_patterns.values() {
             if patterns.is_match(&normalized_path) {
                 return true;
             }
