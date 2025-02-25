@@ -1,11 +1,13 @@
-use anyhow::Result;
 use clap::Parser;
 
+mod cache;
 mod cli;
 mod config;
 mod core;
 mod error;
 mod utils;
+
+use error::Result;
 
 use cli::args::Cli;
 

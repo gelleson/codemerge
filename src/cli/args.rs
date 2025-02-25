@@ -1,5 +1,42 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum CacheOperation {
+    /// Clear the cache
+    Clear,
+    /// Show cache information
+    Info,
+}
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum CacheProvider {
+    /// SQLite-based cache provider
+    Sqlite,
+    /// RocksDB-based cache provider
+    Rocksdb,
+    /// No caching (disabled)
+    None,
+}
+
+impl std::fmt::Display for CacheProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CacheProvider::Sqlite => write!(f, "sqlite"),
+            CacheProvider::Rocksdb => write!(f, "rocksdb"),
+            CacheProvider::None => write!(f, "none"),
+        }
+    }
+}
+
+impl std::fmt::Display for CacheOperation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CacheOperation::Clear => write!(f, "clear"),
+            CacheOperation::Info => write!(f, "info"),
+        }
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "codemerge")]
@@ -10,12 +47,43 @@ pub struct Cli {
     #[arg(long)]
     pub config: Option<PathBuf>,
 
+    /// Cache provider to use
+    #[arg(long, value_enum, default_value_t = CacheProvider::Sqlite)]
+    pub cache_provider: CacheProvider,
+
+    /// Cache directory path
+    #[arg(long)]
+    pub cache_dir: Option<PathBuf>,
+
+    /// Disable cache
+    #[arg(long)]
+    pub no_cache: bool,
+
+    /// Clear cache before running
+    #[arg(long)]
+    pub clear_cache: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// Manage cache operations
+    Cache {
+        /// Cache operation to perform
+        #[arg(value_enum)]
+        operation: CacheOperation,
+        
+        /// Cache provider to use
+        #[arg(long, value_enum)]
+        provider: Option<CacheProvider>,
+        
+        /// Cache directory path
+        #[arg(long)]
+        dir: Option<PathBuf>,
+    },
+    
     /// Merge file contents into one output
     Merge {
         /// Path to files or directories

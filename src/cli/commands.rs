@@ -1,13 +1,63 @@
-use anyhow::Result;
-use std::path::Path;
-
-use crate::cli::args::{Cli, Commands};
+use crate::cache;
+use crate::cli::args::{CacheOperation, CacheProvider, Cli, Commands};
 use crate::config::{self, Config};
 use crate::core::{file, tokens, tree};
+use crate::error::Result;
 use crate::utils::{filters, finder, format};
+use std::path::Path;
 
 pub fn execute(cli: Cli) -> Result<()> {
+    // Initialize cache if not disabled
+    let cache = if !cli.no_cache {
+        let provider = match cli.cache_provider {
+            CacheProvider::Sqlite => "sqlite",
+            CacheProvider::Rocksdb => "rocksdb",
+            CacheProvider::None => "none",
+        };
+        
+        let cache = cache::create_cache(provider, cli.cache_dir.clone())?;
+        
+        // Clear cache if requested
+        if cli.clear_cache {
+            cache.clear()?;
+        }
+        
+        Some(cache)
+    } else {
+        None
+    };
+    
     match cli.command {
+        Commands::Cache {
+            operation,
+            provider,
+            dir,
+        } => {
+            let provider_str = match provider.unwrap_or(cli.cache_provider) {
+                CacheProvider::Sqlite => "sqlite",
+                CacheProvider::Rocksdb => "rocksdb",
+                CacheProvider::None => "none",
+            };
+            
+            // Clone the directory option to avoid ownership issues
+            let dir_clone = dir.clone();
+            let cache_dir_clone = cli.cache_dir.clone();
+            
+            let cache = cache::create_cache(provider_str, dir_clone.or(cache_dir_clone.clone()))?;
+            
+            match operation {
+                CacheOperation::Clear => {
+                    cache.clear()?;
+                    println!("Cache cleared successfully");
+                }
+                CacheOperation::Info => {
+                    println!("Cache provider: {}", provider_str);
+                    println!("Cache directory: {}", cache::get_cache_dir(dir.or(cli.cache_dir)).display());
+                }
+            }
+            
+            Ok(())
+        },
         Commands::Merge {
             path,
             filters: filter_patterns,
@@ -39,7 +89,7 @@ pub fn execute(cli: Cli) -> Result<()> {
                 )?
             };
 
-            let processed = file::process_files(&files);
+            let processed = file::process_files(&files, cache.as_ref());
             let filtered = filters::apply_budget_filters(
                 processed,
                 min_budget,
@@ -48,7 +98,8 @@ pub fn execute(cli: Cli) -> Result<()> {
                 limit_by_low_budget,
             );
 
-            format::output_results(&filtered, &format_type, output)?;
+            format::output_results(&filtered, &format_type, output)
+                .map_err(|e| crate::error::Error::Config(format!("Output error: {}", e)))?;
             Ok(())
         }
 
@@ -81,7 +132,7 @@ pub fn execute(cli: Cli) -> Result<()> {
                 )?
             };
 
-            let processed = file::process_files(&files);
+            let processed = file::process_files(&files, cache.as_ref());
             let filtered = filters::apply_budget_filters(
                 processed,
                 min_budget,
@@ -126,7 +177,7 @@ pub fn execute(cli: Cli) -> Result<()> {
                 )?
             };
 
-            let processed = file::process_files(&files);
+            let processed = file::process_files(&files, cache.as_ref());
             let filtered = filters::apply_budget_filters(
                 processed,
                 min_budget,

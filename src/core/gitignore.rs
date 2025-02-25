@@ -59,6 +59,12 @@ impl GitignoreManager {
             "**/*.svg",
             "**/.yarn/**",
             "**/*.lock",
+            "**/.jest/**",
+            "**/.cache/**",
+            "**/.pnpm-lock.yaml",
+            "**/.yarn-lock.yaml",
+            "**/.*/**",
+            "**/coverage/**",
         ];
 
         let mut builder = GlobSetBuilder::new();
