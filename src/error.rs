@@ -22,6 +22,9 @@ pub enum Error {
 
     #[error("Filter error: {0}")]
     Filter(String),
+    
+    #[error("Cache error: {0}")]
+    Cache(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

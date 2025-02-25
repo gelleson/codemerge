@@ -1,10 +1,12 @@
-use super::tokens::count_tokens;
-use anyhow::Result;
+ use super::tokens::count_tokens;
+use crate::cache::Cache;
+use crate::error::Result;
 use memmap2::MmapOptions;
 use rayon::prelude::*;
 use serde::Serialize;
-use std::fs::File;
+use std::fs::{self, File};
 use std::path::Path;
+use std::time::SystemTime;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FileData {
@@ -81,13 +83,37 @@ pub fn read_file(path: &Path) -> Result<FileData> {
     }
 }
 
-pub fn process_files(paths: &[String]) -> Vec<FileData> {
+/// Process a list of files, using the cache if available
+pub fn process_files(paths: &[String], cache: Option<&Box<dyn Cache>>) -> Vec<FileData> {
     paths
         .par_iter()
         .map(|path| {
-            read_file(Path::new(path)).unwrap_or_else(|e| {
+            let path_obj = Path::new(path);
+            
+            // Get file modification time
+            let mtime = match fs::metadata(path_obj) {
+                Ok(metadata) => metadata.modified().unwrap_or_else(|_| SystemTime::now()),
+                Err(_) => SystemTime::now(),
+            };
+            
+            // Try to get from cache first if cache is available
+            if let Some(cache) = cache {
+                if let Some(cached_data) = cache.get_file_data(path, mtime) {
+                    return cached_data;
+                }
+            }
+            
+            // Cache miss or no cache, read the file
+            let file_data = read_file(path_obj).unwrap_or_else(|e| {
                 FileData::with_error(path, format!("Failed to read file: {}", e))
-            })
+            });
+            
+            // Store in cache if available
+            if let Some(cache) = cache {
+                let _ = cache.store_file_data(&file_data, mtime);
+            }
+            
+            file_data
         })
         .collect()
 }
