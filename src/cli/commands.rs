@@ -11,22 +11,21 @@ pub fn execute(cli: Cli) -> Result<()> {
     let cache = if !cli.no_cache {
         let provider = match cli.cache_provider {
             CacheProvider::Sqlite => "sqlite",
-            CacheProvider::Rocksdb => "rocksdb",
             CacheProvider::None => "none",
         };
-        
+
         let cache = cache::create_cache(provider, cli.cache_dir.clone())?;
-        
+
         // Clear cache if requested
         if cli.clear_cache {
             cache.clear()?;
         }
-        
+
         Some(cache)
     } else {
         None
     };
-    
+
     match cli.command {
         Commands::Cache {
             operation,
@@ -35,16 +34,15 @@ pub fn execute(cli: Cli) -> Result<()> {
         } => {
             let provider_str = match provider.unwrap_or(cli.cache_provider) {
                 CacheProvider::Sqlite => "sqlite",
-                CacheProvider::Rocksdb => "rocksdb",
                 CacheProvider::None => "none",
             };
-            
+
             // Clone the directory option to avoid ownership issues
             let dir_clone = dir.clone();
             let cache_dir_clone = cli.cache_dir.clone();
-            
+
             let cache = cache::create_cache(provider_str, dir_clone.or(cache_dir_clone.clone()))?;
-            
+
             match operation {
                 CacheOperation::Clear => {
                     cache.clear()?;
@@ -52,12 +50,15 @@ pub fn execute(cli: Cli) -> Result<()> {
                 }
                 CacheOperation::Info => {
                     println!("Cache provider: {}", provider_str);
-                    println!("Cache directory: {}", cache::get_cache_dir(dir.or(cli.cache_dir)).display());
+                    println!(
+                        "Cache directory: {}",
+                        cache::get_cache_dir(dir.or(cli.cache_dir)).display()
+                    );
                 }
             }
-            
+
             Ok(())
-        },
+        }
         Commands::Merge {
             path,
             filters: filter_patterns,

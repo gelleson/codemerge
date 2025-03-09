@@ -13,8 +13,6 @@ pub enum CacheOperation {
 pub enum CacheProvider {
     /// SQLite-based cache provider
     Sqlite,
-    /// RocksDB-based cache provider
-    Rocksdb,
     /// No caching (disabled)
     None,
 }
@@ -23,7 +21,6 @@ impl std::fmt::Display for CacheProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CacheProvider::Sqlite => write!(f, "sqlite"),
-            CacheProvider::Rocksdb => write!(f, "rocksdb"),
             CacheProvider::None => write!(f, "none"),
         }
     }
@@ -74,16 +71,16 @@ pub enum Commands {
         /// Cache operation to perform
         #[arg(value_enum)]
         operation: CacheOperation,
-        
+
         /// Cache provider to use
         #[arg(long, value_enum)]
         provider: Option<CacheProvider>,
-        
+
         /// Cache directory path
         #[arg(long)]
         dir: Option<PathBuf>,
     },
-    
+
     /// Merge file contents into one output
     Merge {
         /// Path to files or directories
