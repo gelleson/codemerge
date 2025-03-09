@@ -1,4 +1,4 @@
-use crate::cache::trait_def::{Cache, CacheConfig};
+use crate::cache::trait_def::{Cache, CacheConfig, Info};
 use crate::core::file::FileData;
 use crate::error::Result;
 use std::time::SystemTime;
@@ -24,5 +24,9 @@ impl Cache for NoneCache {
     fn clear(&self) -> Result<()> {
         // Nothing to clear
         Ok(())
+    }
+
+    fn info(&self) -> Result<Info> {
+        Ok(Info::default())
     }
 }

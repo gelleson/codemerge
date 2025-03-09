@@ -1,4 +1,4 @@
-use crate::cache;
+use crate::cache::{self, Info};
 use crate::cli::args::{CacheOperation, CacheProvider, Cli, Commands};
 use crate::config::{self, Config};
 use crate::core::{file, tokens, tree};
@@ -49,11 +49,9 @@ pub fn execute(cli: Cli) -> Result<()> {
                     println!("Cache cleared successfully");
                 }
                 CacheOperation::Info => {
-                    println!("Cache provider: {}", provider_str);
-                    println!(
-                        "Cache directory: {}",
-                        cache::get_cache_dir(dir.or(cli.cache_dir)).display()
-                    );
+                    let info = cache.info().unwrap();
+
+                    print_info(&info)
                 }
             }
 
@@ -234,4 +232,16 @@ fn merge_patterns(cli_patterns: &[String], config_patterns: &[String]) -> Vec<St
     } else {
         cli_patterns.to_vec()
     }
+}
+
+const BYTES_IN_MB: u64 = 1024 * 1024;
+
+fn print_info(info: &Info) {
+    let mb = (info.allocated as f64) / (BYTES_IN_MB as f64);
+    println!("Cache Info: ");
+
+    println!("");
+
+    println!("Total records: {:?}", info.records);
+    println!("Total size: {:?} mb", mb.round());
 }

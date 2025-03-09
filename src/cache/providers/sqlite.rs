@@ -1,13 +1,16 @@
-use crate::cache::trait_def::{Cache, CacheConfig};
+use crate::cache::trait_def::{Cache, CacheConfig, Info};
 use crate::core::file::FileData;
 use crate::error::{Error, Result};
 use rusqlite::{params, Connection, OpenFlags};
+use std::fs;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// SQLite-based cache implementation
 pub struct SQLiteCache {
     conn: Arc<Mutex<Connection>>,
+    db_path: PathBuf,
 }
 
 impl SQLiteCache {
@@ -64,6 +67,7 @@ impl Cache for SQLiteCache {
 
         Ok(SQLiteCache {
             conn: Arc::new(Mutex::new(conn)),
+            db_path,
         })
     }
 
@@ -133,4 +137,38 @@ impl Cache for SQLiteCache {
 
         Ok(())
     }
+
+    fn info(&self) -> Result<Info> {
+        let conn = self.conn.lock().map_err(|_| {
+            Error::Config("Failed to acquire lock on SQLite connection".to_string())
+        })?;
+
+        let mut info = Info::default();
+
+        // Get the number of Records in the table.
+        let result = conn.query_row(
+            "SELECT COUNT(*) FROM file_cache", //Efficient way to get row count
+            params![],
+            |row| {
+                let total: i64 = row.get(0)?;
+
+                Ok(total)
+            },
+        );
+
+        info.records =
+            result.map_err(|e| Error::Config(format!("Failed to request cache info: {}", e)))?;
+
+        info.allocated = get_db_size(self.db_path.clone())
+            .map_err(|e| Error::Config(format!("Failed to request cache size: {}", e)))?
+            as i64;
+
+        Ok(info)
+    }
+}
+
+pub fn get_db_size(path: PathBuf) -> Result<u64> {
+    fs::metadata(&path)
+        .map(|metadata| metadata.len())
+        .map_err(|e| Error::Config(format!("Failed to get database size: {}", e)))
 }

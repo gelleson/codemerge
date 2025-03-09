@@ -2,7 +2,7 @@ mod providers;
 mod trait_def;
 
 pub use providers::{NoneCache, SQLiteCache};
-pub use trait_def::{Cache, CacheConfig};
+pub use trait_def::{Cache, CacheConfig, Info};
 
 use crate::error::Result;
 use std::fs;
