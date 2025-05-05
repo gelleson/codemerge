@@ -65,6 +65,7 @@ impl GitignoreManager {
             "**/.yarn-lock.yaml",
             "**/.*/**",
             "**/coverage/**",
+            "**/go.sum",
         ];
 
         let mut builder = GlobSetBuilder::new();
