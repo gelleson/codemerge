@@ -1,3 +1,8 @@
+//! Caching functionality to speed up file processing.
+//!
+//! This module defines the cache trait and provides implementations,
+//! such as an SQLite-based cache and a no-op cache.
+
 mod providers;
 mod trait_def;
 

@@ -1,3 +1,9 @@
+//! Subcommand execution logic.
+//!
+//! This module processes the parsed CLI commands and ties together
+//! the core business logic, such as merging files, analyzing tokens,
+//! generating trees, and managing the cache.
+
 use crate::cache::{self, Info};
 use crate::cli::args::{CacheOperation, CacheProvider, Cli, Commands};
 use crate::config::{self, Config};

@@ -1,3 +1,7 @@
+//! Command-line arguments definition using `clap`.
+//!
+//! Defines the structure for the application's CLI options, flags, and subcommands.
+
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 

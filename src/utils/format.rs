@@ -1,7 +1,23 @@
+//! Output formatting functionality.
+//!
+//! Handles taking processed file data and formatting it as plain text
+//! or JSON, either printing it to stdout or saving it to a file.
+
 use crate::core::file::FileData;
 use anyhow::Result;
 use std::path::PathBuf;
 
+/// Output the final processed file data to the console or a file.
+///
+/// # Arguments
+///
+/// * `files` - A slice of `FileData` representing the files to output.
+/// * `format` - A string defining the output format (e.g., "text", "json").
+/// * `output` - An optional path to a file where the results should be written.
+///
+/// # Returns
+///
+/// * `Result<()>` - Returns success if writing completes, or an error.
 pub fn output_results(files: &[FileData], format: &str, output: Option<PathBuf>) -> Result<()> {
     let content = match format {
         "text" => format_text(files),
