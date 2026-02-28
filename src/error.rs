@@ -17,9 +17,6 @@ pub enum Error {
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 
-    #[error("Invalid path: {0}")]
-    Path(String),
-
     #[error("Filter error: {0}")]
     Filter(String),
     

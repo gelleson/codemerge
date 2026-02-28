@@ -45,6 +45,14 @@ impl Cache for SQLiteCache {
             ))
         })?;
 
+        // Optimization PRAGMAs
+        let _: String = conn.query_row("PRAGMA journal_mode = WAL", [], |row| row.get(0))
+            .map_err(|e| Error::Config(format!("Failed to set WAL mode: {}", e)))?;
+        conn.execute("PRAGMA synchronous = NORMAL", [])
+            .map_err(|e| Error::Config(format!("Failed to set synchronous mode: {}", e)))?;
+        conn.execute("PRAGMA cache_size = -10000", []) // 10MB cache
+            .map_err(|e| Error::Config(format!("Failed to set cache size: {}", e)))?;
+
         // Create tables if they don't exist
         conn.execute(
             "CREATE TABLE IF NOT EXISTS file_cache (
@@ -72,57 +80,105 @@ impl Cache for SQLiteCache {
     }
 
     fn get_file_data(&self, path: &str, mtime: SystemTime) -> Option<FileData> {
+        self.get_file_data_batch(&[(path, mtime)])
+            .into_iter()
+            .next()
+            .flatten()
+    }
+
+    fn get_file_data_batch(&self, paths: &[(&str, SystemTime)]) -> Vec<Option<FileData>> {
         let conn = match self.conn.lock() {
             Ok(conn) => conn,
-            Err(_) => return None, // Lock poisoned
+            Err(_) => return vec![None; paths.len()], // Lock poisoned
         };
 
-        let mtime_ts = Self::system_time_to_timestamp(mtime);
+        let mut results = vec![None; paths.len()];
+        let path_to_idx: std::collections::HashMap<&str, usize> = paths
+            .iter()
+            .enumerate()
+            .map(|(i, (p, _))| (*p, i))
+            .collect();
 
-        let result = conn.query_row(
-            "SELECT content, tokens, mtime, error FROM file_cache WHERE path = ? AND mtime >= ?",
-            params![path, mtime_ts],
-            |row| {
-                let content: String = row.get(0)?;
-                let tokens: usize = row.get(1)?;
-                let _mtime: i64 = row.get(2)?;
-                let error: Option<String> = row.get(3)?;
+        for chunk in paths.chunks(900) {
+            let placeholders = vec!["?"; chunk.len()].join(",");
+            let sql = format!(
+                "SELECT path, content, tokens, mtime, error FROM file_cache WHERE path IN ({})",
+                placeholders
+            );
 
-                let file_data = FileData {
-                    path: path.to_string(),
-                    content,
-                    tokens,
-                    error,
-                };
+            let mut stmt = match conn.prepare_cached(&sql) {
+                Ok(stmt) => stmt,
+                Err(_) => continue,
+            };
 
-                Ok(file_data)
-            },
-        );
+            let params: Vec<&dyn rusqlite::ToSql> =
+                chunk.iter().map(|(p, _)| p as &dyn rusqlite::ToSql).collect();
 
-        match result {
-            Ok(file_data) => Some(file_data),
-            Err(_) => None,
+            let mut rows = match stmt.query(params.as_slice()) {
+                Ok(rows) => rows,
+                Err(_) => continue,
+            };
+
+            while let Ok(Some(row)) = rows.next() {
+                let path: String = row.get(0).unwrap_or_default();
+                if let Some(&idx) = path_to_idx.get(path.as_str()) {
+                    let cache_mtime: i64 = row.get(3).unwrap_or(0);
+                    let required_mtime = Self::system_time_to_timestamp(paths[idx].1);
+                    
+                    if cache_mtime >= required_mtime {
+                        let content: String = row.get(1).unwrap_or_default();
+                        let tokens: usize = row.get(2).unwrap_or(0);
+                        let error: Option<String> = row.get(4).unwrap_or(None);
+
+                        results[idx] = Some(FileData {
+                            path,
+                            content,
+                            tokens,
+                            error,
+                        });
+                    }
+                }
+            }
         }
+
+        results
     }
 
     fn store_file_data(&self, file_data: &FileData, mtime: SystemTime) -> Result<()> {
-        let conn = self.conn.lock().map_err(|_| {
+        self.store_file_data_batch(&[(file_data.clone(), mtime)])
+    }
+
+    fn store_file_data_batch(&self, batch: &[(FileData, SystemTime)]) -> Result<()> {
+        let mut conn = self.conn.lock().map_err(|_| {
             Error::Config("Failed to acquire lock on SQLite connection".to_string())
         })?;
 
-        let mtime_ts = Self::system_time_to_timestamp(mtime);
+        let tx = conn
+            .transaction()
+            .map_err(|e| Error::Config(format!("Failed to start transaction: {}", e)))?;
 
-        conn.execute(
-            "INSERT OR REPLACE INTO file_cache (path, content, tokens, mtime, error) VALUES (?, ?, ?, ?, ?)",
-            params![
-                file_data.path,
-                file_data.content,
-                file_data.tokens,
-                mtime_ts,
-                file_data.error,
-            ],
-        )
-        .map_err(|e| Error::Config(format!("Failed to store file data in cache: {}", e)))?;
+        {
+            let mut stmt = tx
+                .prepare_cached(
+                    "INSERT OR REPLACE INTO file_cache (path, content, tokens, mtime, error) VALUES (?, ?, ?, ?, ?)",
+                )
+                .map_err(|e| Error::Config(format!("Failed to prepare statement: {}", e)))?;
+
+            for (file_data, mtime) in batch {
+                let mtime_ts = Self::system_time_to_timestamp(*mtime);
+                stmt.execute(params![
+                    file_data.path,
+                    file_data.content,
+                    file_data.tokens,
+                    mtime_ts,
+                    file_data.error,
+                ])
+                .map_err(|e| Error::Config(format!("Failed to store file data in cache: {}", e)))?;
+            }
+        }
+
+        tx.commit()
+            .map_err(|e| Error::Config(format!("Failed to commit transaction: {}", e)))?;
 
         Ok(())
     }
