@@ -3,7 +3,6 @@ use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
 use std::io::IsTerminal;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
 
 /// Build a GlobSet from a list of string patterns
 fn build_glob_set(patterns: &[String]) -> Result<GlobSet> {
@@ -28,7 +27,7 @@ pub fn find_files(
     let include_set = build_glob_set(include_patterns)?;
     let ignore_set = build_glob_set(ignore_patterns)?;
 
-    let results = Arc::new(Mutex::new(Vec::new()));
+    let (tx, rx) = std::sync::mpsc::channel();
     
     let mut builder = WalkBuilder::new(root);
     builder.standard_filters(true); // Respect .gitignore, etc.
@@ -37,7 +36,7 @@ pub fn find_files(
     let walker = builder.build_parallel();
     
     walker.run(|| {
-        let results = Arc::clone(&results);
+        let tx = tx.clone();
         let include_set = &include_set;
         let ignore_set = &ignore_set;
         let root = root.to_path_buf();
@@ -49,8 +48,7 @@ pub fn find_files(
                     let relative = path.strip_prefix(&root).unwrap_or(path);
                     
                     if include_set.is_match(relative) && !ignore_set.is_match(relative) {
-                        let mut results = results.lock().unwrap();
-                        results.push(path.to_string_lossy().to_string());
+                        let _ = tx.send(path.to_string_lossy().to_string());
                     }
                 }
             }
@@ -58,10 +56,8 @@ pub fn find_files(
         })
     });
 
-    let files = Arc::try_unwrap(results)
-        .expect("Arc should have only one reference")
-        .into_inner()
-        .expect("Mutex should not be poisoned");
+    drop(tx);
+    let files: Vec<String> = rx.into_iter().collect();
 
     Ok(files)
 }

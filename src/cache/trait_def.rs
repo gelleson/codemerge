@@ -36,6 +36,7 @@ pub trait Cache: Send + Sync {
     /// # Returns
     /// * `Some(FileData)` if the file is in the cache and not modified
     /// * `None` if the file is not in the cache or has been modified
+    #[allow(dead_code)]
     fn get_file_data(&self, path: &str, mtime: SystemTime) -> Option<FileData>;
 
     /// Get multiple file data from the cache in one go
@@ -52,6 +53,7 @@ pub trait Cache: Send + Sync {
     /// # Arguments
     /// * `file_data` - The file data to store
     /// * `mtime` - The last modification time of the file
+    #[allow(dead_code)]
     fn store_file_data(&self, file_data: &FileData, mtime: SystemTime) -> Result<()>;
 
     /// Store a batch of file data in the cache efficiently

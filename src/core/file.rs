@@ -91,7 +91,7 @@ pub fn process_files(paths: &[String], cache: Option<&Box<dyn Cache>>) -> Vec<Fi
 
     // 1. Get mtimes for all files
     let paths_with_mtime: Vec<(&String, SystemTime)> = paths
-        .iter()
+        .par_iter()
         .map(|path| {
             let mtime = match fs::metadata(path) {
                 Ok(metadata) => metadata.modified().unwrap_or_else(|_| SystemTime::now()),

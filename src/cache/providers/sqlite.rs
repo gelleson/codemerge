@@ -92,32 +92,56 @@ impl Cache for SQLiteCache {
             Err(_) => return vec![None; paths.len()], // Lock poisoned
         };
 
-        let mut stmt = match conn.prepare_cached(
-            "SELECT content, tokens, error FROM file_cache WHERE path = ? AND mtime >= ?",
-        ) {
-            Ok(stmt) => stmt,
-            Err(_) => return vec![None; paths.len()],
-        };
-
-        paths
+        let mut results = vec![None; paths.len()];
+        let path_to_idx: std::collections::HashMap<&str, usize> = paths
             .iter()
-            .map(|(path, mtime)| {
-                let mtime_ts = Self::system_time_to_timestamp(*mtime);
-                stmt.query_row(params![*path, mtime_ts], |row| {
-                    let content: String = row.get(0)?;
-                    let tokens: usize = row.get(1)?;
-                    let error: Option<String> = row.get(2)?;
+            .enumerate()
+            .map(|(i, (p, _))| (*p, i))
+            .collect();
 
-                    Ok(FileData {
-                        path: path.to_string(),
-                        content,
-                        tokens,
-                        error,
-                    })
-                })
-                .ok()
-            })
-            .collect()
+        for chunk in paths.chunks(900) {
+            let placeholders = vec!["?"; chunk.len()].join(",");
+            let sql = format!(
+                "SELECT path, content, tokens, mtime, error FROM file_cache WHERE path IN ({})",
+                placeholders
+            );
+
+            let mut stmt = match conn.prepare_cached(&sql) {
+                Ok(stmt) => stmt,
+                Err(_) => continue,
+            };
+
+            let params: Vec<&dyn rusqlite::ToSql> =
+                chunk.iter().map(|(p, _)| p as &dyn rusqlite::ToSql).collect();
+
+            let mut rows = match stmt.query(params.as_slice()) {
+                Ok(rows) => rows,
+                Err(_) => continue,
+            };
+
+            while let Ok(Some(row)) = rows.next() {
+                let path: String = row.get(0).unwrap_or_default();
+                if let Some(&idx) = path_to_idx.get(path.as_str()) {
+                    let cache_mtime: i64 = row.get(3).unwrap_or(0);
+                    let required_mtime = Self::system_time_to_timestamp(paths[idx].1);
+                    
+                    if cache_mtime >= required_mtime {
+                        let content: String = row.get(1).unwrap_or_default();
+                        let tokens: usize = row.get(2).unwrap_or(0);
+                        let error: Option<String> = row.get(4).unwrap_or(None);
+
+                        results[idx] = Some(FileData {
+                            path,
+                            content,
+                            tokens,
+                            error,
+                        });
+                    }
+                }
+            }
+        }
+
+        results
     }
 
     fn store_file_data(&self, file_data: &FileData, mtime: SystemTime) -> Result<()> {
