@@ -45,6 +45,14 @@ impl Cache for SQLiteCache {
             ))
         })?;
 
+        // Optimization PRAGMAs
+        let _: String = conn.query_row("PRAGMA journal_mode = WAL", [], |row| row.get(0))
+            .map_err(|e| Error::Config(format!("Failed to set WAL mode: {}", e)))?;
+        conn.execute("PRAGMA synchronous = NORMAL", [])
+            .map_err(|e| Error::Config(format!("Failed to set synchronous mode: {}", e)))?;
+        conn.execute("PRAGMA cache_size = -10000", []) // 10MB cache
+            .map_err(|e| Error::Config(format!("Failed to set cache size: {}", e)))?;
+
         // Create tables if they don't exist
         conn.execute(
             "CREATE TABLE IF NOT EXISTS file_cache (
@@ -72,57 +80,81 @@ impl Cache for SQLiteCache {
     }
 
     fn get_file_data(&self, path: &str, mtime: SystemTime) -> Option<FileData> {
+        self.get_file_data_batch(&[(path, mtime)])
+            .into_iter()
+            .next()
+            .flatten()
+    }
+
+    fn get_file_data_batch(&self, paths: &[(&str, SystemTime)]) -> Vec<Option<FileData>> {
         let conn = match self.conn.lock() {
             Ok(conn) => conn,
-            Err(_) => return None, // Lock poisoned
+            Err(_) => return vec![None; paths.len()], // Lock poisoned
         };
 
-        let mtime_ts = Self::system_time_to_timestamp(mtime);
+        let mut stmt = match conn.prepare_cached(
+            "SELECT content, tokens, error FROM file_cache WHERE path = ? AND mtime >= ?",
+        ) {
+            Ok(stmt) => stmt,
+            Err(_) => return vec![None; paths.len()],
+        };
 
-        let result = conn.query_row(
-            "SELECT content, tokens, mtime, error FROM file_cache WHERE path = ? AND mtime >= ?",
-            params![path, mtime_ts],
-            |row| {
-                let content: String = row.get(0)?;
-                let tokens: usize = row.get(1)?;
-                let _mtime: i64 = row.get(2)?;
-                let error: Option<String> = row.get(3)?;
+        paths
+            .iter()
+            .map(|(path, mtime)| {
+                let mtime_ts = Self::system_time_to_timestamp(*mtime);
+                stmt.query_row(params![*path, mtime_ts], |row| {
+                    let content: String = row.get(0)?;
+                    let tokens: usize = row.get(1)?;
+                    let error: Option<String> = row.get(2)?;
 
-                let file_data = FileData {
-                    path: path.to_string(),
-                    content,
-                    tokens,
-                    error,
-                };
-
-                Ok(file_data)
-            },
-        );
-
-        match result {
-            Ok(file_data) => Some(file_data),
-            Err(_) => None,
-        }
+                    Ok(FileData {
+                        path: path.to_string(),
+                        content,
+                        tokens,
+                        error,
+                    })
+                })
+                .ok()
+            })
+            .collect()
     }
 
     fn store_file_data(&self, file_data: &FileData, mtime: SystemTime) -> Result<()> {
-        let conn = self.conn.lock().map_err(|_| {
+        self.store_file_data_batch(&[(file_data.clone(), mtime)])
+    }
+
+    fn store_file_data_batch(&self, batch: &[(FileData, SystemTime)]) -> Result<()> {
+        let mut conn = self.conn.lock().map_err(|_| {
             Error::Config("Failed to acquire lock on SQLite connection".to_string())
         })?;
 
-        let mtime_ts = Self::system_time_to_timestamp(mtime);
+        let tx = conn
+            .transaction()
+            .map_err(|e| Error::Config(format!("Failed to start transaction: {}", e)))?;
 
-        conn.execute(
-            "INSERT OR REPLACE INTO file_cache (path, content, tokens, mtime, error) VALUES (?, ?, ?, ?, ?)",
-            params![
-                file_data.path,
-                file_data.content,
-                file_data.tokens,
-                mtime_ts,
-                file_data.error,
-            ],
-        )
-        .map_err(|e| Error::Config(format!("Failed to store file data in cache: {}", e)))?;
+        {
+            let mut stmt = tx
+                .prepare_cached(
+                    "INSERT OR REPLACE INTO file_cache (path, content, tokens, mtime, error) VALUES (?, ?, ?, ?, ?)",
+                )
+                .map_err(|e| Error::Config(format!("Failed to prepare statement: {}", e)))?;
+
+            for (file_data, mtime) in batch {
+                let mtime_ts = Self::system_time_to_timestamp(*mtime);
+                stmt.execute(params![
+                    file_data.path,
+                    file_data.content,
+                    file_data.tokens,
+                    mtime_ts,
+                    file_data.error,
+                ])
+                .map_err(|e| Error::Config(format!("Failed to store file data in cache: {}", e)))?;
+            }
+        }
+
+        tx.commit()
+            .map_err(|e| Error::Config(format!("Failed to commit transaction: {}", e)))?;
 
         Ok(())
     }

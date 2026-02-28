@@ -16,7 +16,16 @@ impl Cache for NoneCache {
         None
     }
 
+    fn get_file_data_batch(&self, paths: &[(&str, SystemTime)]) -> Vec<Option<FileData>> {
+        vec![None; paths.len()]
+    }
+
     fn store_file_data(&self, _file_data: &FileData, _mtime: SystemTime) -> Result<()> {
+        // Do nothing
+        Ok(())
+    }
+
+    fn store_file_data_batch(&self, _batch: &[(FileData, SystemTime)]) -> Result<()> {
         // Do nothing
         Ok(())
     }

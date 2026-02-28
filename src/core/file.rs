@@ -85,35 +85,77 @@ pub fn read_file(path: &Path) -> Result<FileData> {
 
 /// Process a list of files, using the cache if available
 pub fn process_files(paths: &[String], cache: Option<&Box<dyn Cache>>) -> Vec<FileData> {
-    paths
-        .par_iter()
+    if paths.is_empty() {
+        return Vec::new();
+    }
+
+    // 1. Get mtimes for all files
+    let paths_with_mtime: Vec<(&String, SystemTime)> = paths
+        .iter()
         .map(|path| {
-            let path_obj = Path::new(path);
-            
-            // Get file modification time
-            let mtime = match fs::metadata(path_obj) {
+            let mtime = match fs::metadata(path) {
                 Ok(metadata) => metadata.modified().unwrap_or_else(|_| SystemTime::now()),
                 Err(_) => SystemTime::now(),
             };
-            
-            // Try to get from cache first if cache is available
-            if let Some(cache) = cache {
-                if let Some(cached_data) = cache.get_file_data(path, mtime) {
-                    return cached_data;
-                }
-            }
-            
-            // Cache miss or no cache, read the file
-            let file_data = read_file(path_obj).unwrap_or_else(|e| {
+            (path, mtime)
+        })
+        .collect();
+
+    // 2. Try to get from cache in batch
+    let cached_results = if let Some(cache) = cache {
+        let query_paths: Vec<(&str, SystemTime)> = paths_with_mtime
+            .iter()
+            .map(|(p, m)| (p.as_str(), *m))
+            .collect();
+        cache.get_file_data_batch(&query_paths)
+    } else {
+        vec![None; paths.len()]
+    };
+
+    // 3. Identify cache misses and their indices
+    let mut results = vec![None; paths.len()];
+    let mut misses = Vec::new();
+
+    for (i, (cached, (path, mtime))) in cached_results
+        .into_iter()
+        .zip(paths_with_mtime.into_iter())
+        .enumerate()
+    {
+        if let Some(data) = cached {
+            results[i] = Some(data);
+        } else {
+            misses.push((i, path, mtime));
+        }
+    }
+
+    if misses.is_empty() {
+        return results.into_iter().flatten().collect();
+    }
+
+    // 4. Process misses in parallel
+    let processed_misses: Vec<(usize, FileData, SystemTime)> = misses
+        .into_par_iter()
+        .map(|(i, path, mtime)| {
+            let file_data = read_file(Path::new(path)).unwrap_or_else(|e| {
                 FileData::with_error(path, format!("Failed to read file: {}", e))
             });
-            
-            // Store in cache if available
-            if let Some(cache) = cache {
-                let _ = cache.store_file_data(&file_data, mtime);
-            }
-            
-            file_data
+            (i, file_data, mtime)
         })
-        .collect()
+        .collect();
+
+    // 5. Store misses in cache in batch
+    if let Some(cache) = cache {
+        let store_batch: Vec<(FileData, SystemTime)> = processed_misses
+            .iter()
+            .map(|(_, data, mtime)| (data.clone(), *mtime))
+            .collect();
+        let _ = cache.store_file_data_batch(&store_batch);
+    }
+
+    // 6. Merge results
+    for (i, data, _) in processed_misses {
+        results[i] = Some(data);
+    }
+
+    results.into_iter().flatten().collect()
 }
