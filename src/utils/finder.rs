@@ -1,3 +1,9 @@
+//! File traversal and discovery.
+//!
+//! Provides functions to scan directories in parallel while respecting
+//! include and ignore glob patterns, as well as helpers to read file
+//! lists from standard input.
+
 use crate::error::{Error, Result};
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;

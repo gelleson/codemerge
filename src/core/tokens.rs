@@ -1,3 +1,9 @@
+//! Token counting and token-based formatting functionalities.
+//!
+//! Provides the core `count_tokens` function, utilizing the `tiktoken-rs` library
+//! configured with the `gpt-4` tokenizer model, as well as functions to output token
+//! statistics in plain text or JSON format.
+
 use super::file::FileData;
 use serde_json;
 use std::sync::OnceLock;
@@ -12,10 +18,30 @@ fn get_tokenizer() -> &'static CoreBPE {
 }
 
 /// Count the number of tokens in a given text.
+///
+/// This uses the `gpt-4` tokenizer via the `tiktoken-rs` library.
+///
+/// # Arguments
+///
+/// * `text` - The text content to analyze.
+///
+/// # Returns
+///
+/// * `usize` - The calculated token count.
 pub fn count_tokens(text: &str) -> usize {
     get_tokenizer().encode_with_special_tokens(text).len()
 }
 
+/// Format an ASCII-based display board showing files with the highest token counts.
+///
+/// # Arguments
+///
+/// * `files` - A slice of `FileData` representing processed files.
+/// * `max_display` - The maximum number of files to show in the board.
+///
+/// # Returns
+///
+/// * `String` - A formatted string ready to be printed to standard output.
 pub fn format_token_board(files: &[FileData], max_display: usize) -> String {
     let mut result = String::new();
     let max_path_len = files.iter().map(|f| f.path.len()).max().unwrap_or(0);
@@ -44,6 +70,16 @@ pub fn format_token_board(files: &[FileData], max_display: usize) -> String {
     result
 }
 
+/// Format token statistics as a JSON payload.
+///
+/// # Arguments
+///
+/// * `files` - A slice of `FileData` representing processed files.
+/// * `max_display` - The maximum number of individual file entries to include in the JSON results.
+///
+/// # Returns
+///
+/// * `String` - A JSON-formatted string representing token statistics.
 pub fn format_token_json(files: &[FileData], max_display: usize) -> String {
     let total: usize = files.iter().map(|f| f.tokens).sum();
     let mut sorted_files = files.to_vec();

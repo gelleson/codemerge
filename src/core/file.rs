@@ -1,4 +1,10 @@
- use super::tokens::count_tokens;
+//! File processing and token counting module.
+//!
+//! Handles reading file contents (using memory mapping for large files),
+//! counting their tokens, and interacting with the cache to speed up
+//! subsequent processing.
+
+use super::tokens::count_tokens;
 use crate::cache::Cache;
 use crate::error::Result;
 use memmap2::MmapOptions;
@@ -8,16 +14,30 @@ use std::fs::{self, File};
 use std::path::Path;
 use std::time::SystemTime;
 
+/// Represents a processed file, containing its path, content, token count,
+/// and any errors encountered during processing.
 #[derive(Debug, Clone, Serialize)]
 pub struct FileData {
+    /// The path of the file.
     pub path: String,
+    /// The full text content of the file.
     pub content: String,
+    /// The number of tokens in the file content.
     pub tokens: usize,
+    /// Any error message generated while attempting to read the file.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 
 impl FileData {
+    /// Create a new `FileData` instance, calculating tokens from the provided content.
+    ///
+    /// If the content is empty or contains only whitespace, the token count will be set to 0.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path representing the file.
+    /// * `content` - The file content.
     pub fn new(path: impl Into<String>, content: impl Into<String>) -> Self {
         let content = content.into();
         let tokens = count_tokens(&content);
@@ -40,6 +60,14 @@ impl FileData {
         }
     }
 
+    /// Create a `FileData` instance with an error instead of content.
+    ///
+    /// This is used when a file could not be read properly (e.g., due to invalid UTF-8).
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The path representing the file.
+    /// * `error` - The error message.
     pub fn with_error(path: impl Into<String>, error: impl Into<String>) -> Self {
         Self {
             path: path.into(),
@@ -50,6 +78,18 @@ impl FileData {
     }
 }
 
+/// Read the content of a file from disk into a `FileData` instance.
+///
+/// Optimizes read performance by using regular file reads for small files
+/// (under 8KB) and memory-mapped files (`mmap`) for larger ones.
+///
+/// # Arguments
+///
+/// * `path` - A reference to the file path to read.
+///
+/// # Returns
+///
+/// * `Result<FileData>` - Contains the processed file data, or an error if reading fails.
 pub fn read_file(path: &Path) -> Result<FileData> {
     let file = File::open(path)?;
     let metadata = file.metadata()?;
@@ -83,7 +123,17 @@ pub fn read_file(path: &Path) -> Result<FileData> {
     }
 }
 
-/// Process a list of files, using the cache if available
+/// Process a list of file paths in parallel, calculating tokens and utilizing
+/// caching if provided.
+///
+/// # Arguments
+///
+/// * `paths` - A slice of file paths to process.
+/// * `cache` - An optional reference to a `Cache` implementation to speed up processing.
+///
+/// # Returns
+///
+/// * `Vec<FileData>` - A list of successfully read and processed `FileData` objects.
 pub fn process_files(paths: &[String], cache: Option<&Box<dyn Cache>>) -> Vec<FileData> {
     if paths.is_empty() {
         return Vec::new();

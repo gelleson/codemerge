@@ -1,3 +1,10 @@
+//! `codemerge` is an ultra-fast CLI tool designed for merging and analyzing code.
+//!
+//! It provides functionalities to merge multiple source files into a single output,
+//! analyze token counts, display directory trees, and manage caching for better performance.
+//!
+//! This is the main entry point for the application.
+
 use clap::Parser;
 
 mod cache;

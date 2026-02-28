@@ -1,15 +1,25 @@
+//! Directory tree construction and rendering logic.
+//!
+//! Provides structures and functions to construct an in-memory hierarchical
+//! directory tree from a flat list of files and visually format it as an ASCII tree.
+
 use super::file::FileData;
 use serde::Serialize;
 use std::collections::HashMap;
 
+/// A node in the directory tree structure.
 #[derive(Debug, Serialize, Clone)]
 pub struct TreeNode {
+    /// The name of the file or directory.
     pub path: String,
+    /// The sum of tokens in this file or directory (including children).
     pub tokens: usize,
+    /// Sub-nodes for a directory, or empty if it's a file.
     pub children: Vec<TreeNode>,
 }
 
 impl TreeNode {
+    /// Initialize a new tree node.
     pub fn new(path: String) -> Self {
         Self {
             path,
@@ -18,12 +28,22 @@ impl TreeNode {
         }
     }
 
+    /// Add a child node to this directory, accumulating its token count.
     pub fn add_child(&mut self, child: TreeNode) {
         self.tokens += child.tokens;
         self.children.push(child);
     }
 }
 
+/// Construct an in-memory hierarchical tree from a flat list of processed files.
+///
+/// # Arguments
+///
+/// * `files` - A slice of `FileData` instances containing the resolved paths and token counts.
+///
+/// # Returns
+///
+/// * `TreeNode` - The root node of the constructed tree structure.
 pub fn build_tree(files: &[FileData]) -> TreeNode {
     let mut root = TreeNode::new(String::new());
     let mut path_map: HashMap<String, Vec<String>> = HashMap::new();
@@ -90,6 +110,17 @@ fn update_directory_tokens(node: &mut TreeNode) -> usize {
     total
 }
 
+/// Recursively formats the tree structure into a visually aligned ASCII representation.
+///
+/// # Arguments
+///
+/// * `tree` - A reference to the root `TreeNode` to be formatted.
+/// * `indent` - The current indentation string (typically empty initially).
+/// * `is_last` - A boolean indicating if the current node is the last child of its parent.
+///
+/// # Returns
+///
+/// * `String` - A formatted string representing the directory tree, ready for standard output.
 pub fn format_tree(tree: &TreeNode, indent: &str, is_last: bool) -> String {
     let mut result = String::new();
 

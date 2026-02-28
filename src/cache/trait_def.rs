@@ -45,7 +45,7 @@ pub trait Cache: Send + Sync {
     /// * `paths` - A slice of (path, mtime) pairs
     ///
     /// # Returns
-    /// * A vector of Option<FileData> in the same order as paths
+    /// * A vector of `Option<FileData>` in the same order as paths
     fn get_file_data_batch(&self, paths: &[(&str, SystemTime)]) -> Vec<Option<FileData>>;
 
     /// Store file data in the cache
